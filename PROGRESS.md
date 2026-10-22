@@ -7,8 +7,8 @@ The agent reads this at the start of every session and appends to it at the end.
 | Decision | Value |
 |---|---|
 | App name | TBD |
-| GitHub repo (fork of storytold/lightcraft) | TBD (name, visibility: private recommended until ready) |
-| Target Windows version and GPU | TBD |
+| GitHub repo (fork of storytold/lightcraft) | `iramhaque06-cmyk/utopia` |
+| Target Windows version and GPU | Windows 11 Home (build 26200), Intel Iris Xe (this machine) |
 | Test images supplied | no |
 | Price / tiers | deferred to Phase 2 |
 
@@ -16,7 +16,7 @@ The agent reads this at the start of every session and appends to it at the end.
 
 Status: `[ ]` not started, `[~]` in progress, `[x]` done and human-approved.
 
-- [ ] M00 Orientation, toolchain check, repo and GitHub setup
+- [~] M00 Orientation, toolchain check, repo and GitHub setup
 - [ ] M01 AI quarantine behind cargo feature `ai` (default off)
 - [ ] M02 Stub effect proves the end-to-end path
 - [ ] M03 Glow and Bloom (CPU reference)
@@ -54,4 +54,9 @@ Append newest at the bottom. Format:
 - Decisions needed from human:
 ```
 
-(no sessions yet)
+### 2026-10-21  Session 1  (Buffy / Codebuff, M00)
+- Changed: Windows toolchain installed on D: (rustup `D:/rust`, stable `x86_64-pc-windows-gnu` 1.99.1 + rustfmt/clippy/wasm32; MSYS2 MinGW-w64 gcc 16.2.0 at `D:/msys64`; build target `D:/rust/target`; C: untouched). AGENTS.md: session-start line pointing at the root product docs (they live at the repo root, not `docs/product/` — the line says so now). FEATURES.md: all 22 `inherited (verify)` rows checked against code and tests; statuses rewritten (20 works, 2 partial) with a per-row evidence table. `crates/catalog/src/store.rs`: `tests_staging` gated `#[cfg(all(test, unix))]` (its only test is unix-only; clippy `-D warnings` flagged the dead `use super::*` on Windows). GitHub: Issues enabled on the fork (human approved), issues #1–#16 = M00–M15 filed with scope + acceptance, label `phase-1`; `upstream` remote = storytold/lightcraft confirmed.
+- Tests run / results: `cargo xtask ci` on this machine (rustc 1.99.1, MinGW gcc 16.2.0). Run 1: fmt ok, clippy FAIL (store.rs unused import), everything after skipped. Fixed (module cfg gate, no lint suppression). Run 2 at time of writing: fmt ok, clippy ok, heif build ok, test suite 14 binaries ok / 0 failed so far (still compiling the heavy test targets — candle-core, engine, ui; parity, layers, assets and wasm steps run after tests). Final green run pending; Session 2 records `target/ci/report.json` + `summary.md`.
+- Left to do: confirm `cargo xtask ci` reaches green end-to-end and record the final step results; then M01 onward per the issues.
+- Known issues: no `CRAFT_FONTS_DIR` (Chinese/Japanese text renders as empty boxes; clone craft-fonts next to this repo and rebuild); `corpus/` is empty (0 of 447 pinned raws) so corpus-dependent tests skip; C: has very little free space — keep toolchains, registries and `target/` on D:.
+- Decisions needed from human: (1) app name (VISION.md candidates; needed by M15); (2) EFFECTS_SPEC §4 grain retune vs RULES §4 pixel-identity — retire the old grain look behind a new process version, or approve the retune? (3) does the YuNet face detector go behind the `ai` feature in M01 (leaving manual patch healing only)? (4) test photos: proceed with procedural + CC0 corpus (recorded in test-images/SOURCES.md) or will you supply photos before M03?
