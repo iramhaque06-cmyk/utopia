@@ -43,6 +43,11 @@ pub fn body(app: &mut LightcraftApp, ui: &mut egui::Ui, tab: &mut String) {
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing.x = 4.0;
         for (id, label) in TABS {
+            // M01 AI quarantine: the Faces and AI Denoise tabs are hidden (not greyed out) in a
+            // build without those `ai` features.
+            if (*id == "faces" && !cfg!(feature = "faces")) || (*id == "denoise" && !cfg!(feature = "denoise")) {
+                continue;
+            }
             if crate::widgets::text_button(ui, &format!("settingsTab-{id}"), label, tab == id).clicked() {
                 *tab = id.to_string();
             }

@@ -42,6 +42,10 @@ pub struct Ui {
 /// Called every frame: keeps the engine's denoise work going and asks for a redraw when a photo's picture appears (the
 /// loupe and the thumbnails then render from it) or while one is being made (the progress).
 pub fn pump(app: &mut LightcraftApp, ctx: &egui::Context) {
+    // M01 AI quarantine: the AI Denoise surface is hidden without the `denoise` part of `ai`.
+    if !cfg!(feature = "denoise") {
+        return;
+    }
     watch_downloads(app, ctx);
     let now = ctx.input(|i| i.time);
     let (working, moving) = ctx.input(|i| {
@@ -131,6 +135,9 @@ fn watch_downloads(app: &mut LightcraftApp, ctx: &egui::Context) {
 
 /// Per-photo AI Denoise switch, including a request waiting for model installation.
 pub fn detail_toggle(app: &mut LightcraftApp, ui: &mut egui::Ui, id: PhotoId, on: bool, applicable: bool) {
+    if !cfg!(feature = "denoise") {
+        return;
+    }
     let mut enabled = on || crate::model_setup::denoise_requested(app, id);
     egui::Frame::NONE.inner_margin(egui::Margin { left: 24, right: 22, top: 6, bottom: 2 }).show(ui, |ui| {
         let r = ui.add_enabled(applicable, egui::Checkbox::new(&mut enabled, crate::i18n::tr("AI Denoise")));
@@ -143,6 +150,9 @@ pub fn detail_toggle(app: &mut LightcraftApp, ui: &mut egui::Ui, id: PhotoId, on
 
 /// The line under the Denoise slider for the photo `id`, whose Amount is `amount`.
 pub fn detail_status(app: &mut LightcraftApp, ui: &mut egui::Ui, id: PhotoId, amount: f64) {
+    if !cfg!(feature = "denoise") {
+        return;
+    }
     let t = Tokens::get(ui.ctx());
     let state = app.session.denoise_photo_state(id);
     let pad = egui::Margin { left: 24, right: 22, top: 0, bottom: 6 };
@@ -221,6 +231,9 @@ pub fn detail_status(app: &mut LightcraftApp, ui: &mut egui::Ui, id: PhotoId, am
 
 /// The Settings ▸ Denoise tab.
 pub fn settings_tab(app: &mut LightcraftApp, ui: &mut egui::Ui, t: &Tokens) {
+    if !cfg!(feature = "denoise") {
+        return;
+    }
     let list = models(app, ui.ctx());
     heading(ui, t, "AI Denoise");
     crate::model_setup::notice(app, ui, "denoise");
@@ -543,6 +556,9 @@ fn open_download_dialog(app: &mut LightcraftApp, m: &Value) {
 
 /// The dialog's OK for a denoise model: start the download and watch it.
 pub fn install(app: &mut LightcraftApp, info: &Value, accepted: bool) -> Result<Value, String> {
+    if !cfg!(feature = "denoise") {
+        return Err("unsupported in this build: AI denoise needs the `ai` cargo feature (M01)".into());
+    }
     if !accepted {
         return Err(tr("Tick the box to accept the model's terms first").into());
     }
@@ -631,6 +647,9 @@ pub(super) fn open_page(app: &mut LightcraftApp, url: &str) {
 }
 
 pub fn model_dialog(app: &mut LightcraftApp, ui: &mut egui::Ui, t: &Tokens, info: &Value, accepted: &mut bool) {
+    if !cfg!(feature = "denoise") {
+        return;
+    }
     let kind = info["kind"].as_str().unwrap_or("unsupported");
     let file = info["fileName"].as_str().unwrap_or("");
     if kind == "unsupported" {

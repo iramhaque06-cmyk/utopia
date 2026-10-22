@@ -27,7 +27,8 @@ lightcraft-denoise-core = { workspace = true }
 lightcraft-denoise = { workspace = true, optional = true }
 lightcraft-meta = { workspace = true }
 lightcraft-lensdb = { workspace = true }
-lightcraft-faces = { workspace = true }
+# Face detection/recognition (YuNet/SFace/AuraFace ONNX models): behind the `faces` feature (M01).
+lightcraft-faces = { workspace = true, optional = true }
 miniz_oxide = { workspace = true }
 lightcraft-merge = { workspace = true }
 lightcraft-geocode = { workspace = true }
@@ -48,9 +49,16 @@ lightcraft-segment = { workspace = true, optional = true }
 lightcraft-fetch = { workspace = true }
 
 [features]
+# AI quarantine (M01, RULES section 2): `ai` is the switch for every model-dependent feature.
+# OFF by default: a default build links no ML runtime (no candle, faer, ndarray) and downloads
+# no model weights; the AI commands answer with a clear "unsupported in this build" error and the
+# AI UI is hidden. The narrower features below are its parts.
+ai = ["denoise", "sam", "faces"]
 # AI masks with SAM 3 (Object / Describe). Off for the web and CLI builds.
 sam = ["dep:lightcraft-segment"]
 denoise = ["dep:lightcraft-denoise", "lightcraft-denoise/runtime", "lightcraft-gpu/denoise"]
+# Face detection and recognition (YuNet/SFace/AuraFace models).
+faces = ["dep:lightcraft-faces", "lightcraft-gpu/faces"]
 rawnind-model = ["denoise", "lightcraft-denoise/rawnind-model", "lightcraft-denoise-core/rawnind-model"]
 
 [dev-dependencies]

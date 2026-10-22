@@ -2158,6 +2158,7 @@ mod cache_tests {
 }
 
 #[cfg(test)]
+#[cfg(feature = "denoise")] // M01: model installation flows are part of the `ai` build
 mod tests_model_setup;
 
 #[cfg(test)]

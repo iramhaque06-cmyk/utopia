@@ -77,6 +77,46 @@
 | AI denoise and model-based object removal | 3 |
 | Cloud sync or accounts | not planned |
 
+## AI quarantine (M01, 2026-10-21)
+
+RULES section 2 keeps Phase 1 free of AI. The inherited AI code stays in the repository but lives behind the cargo
+feature `ai` (off by default), split into its pieces `denoise`, `faces` and `sam`. A default build compiles, runs and
+tests with no ML runtime dependency and no model weights.
+
+| Moved behind `ai` | Piece | What it quarantines |
+|---|---|---|
+| AI Denoise | `denoise` | ONNX denoiser inference (`crates/denoise`, `crates/denoise-core`), denoise model download/install and the model-setup flows |
+| Face detection and recognition | `faces` | YuNet detector + embedder inference (`crates/faces`), face model download/install, faces-index scanning, People recognition |
+| Object and Describe masks | `sam` | SAM 3 segmentation (`crates/segment`), the Object/Describe mask tiles and the Describe field |
+
+What the quarantine means for a default build:
+
+- Engine commands that need a model stay registered but return a clear "this build cannot run \u2026" error, so scripts,
+  the control channel and MCP get an actionable message instead of "unknown command".
+- The UI hides (not greys out) the AI controls: Settings \u25b8 Faces tab, Settings \u25b8 AI Denoise tab, the model-setup
+  dialog, the AI Denoise block in Detail, and the Object/Describe mask tiles.
+- Non-AI editing is untouched: brush, linear, radial, luminance-range and colour-range masks, the Subject/Sky/Background
+  heuristic mattes, patch-based spot healing/cloning and blemish removal, and the manual noise-reduction sliders.
+- Data is kept, not deleted: face records and Object/Prompt masks from imported catalogs remain in the library.
+
+Build with AI: `cargo build --features ai` (apps, CLI, `ui-egui`, `engine`), or the per-piece features. Build matrices
+and the never-crash stubs are verified in `engine/src/cmd/mod.rs` (the `quarantined` helper) and the feature lists in
+`crates/{engine,gpu,ui-egui}/Cargo.toml` and `apps/*/Cargo.toml`.
+
+Files changed (M01): `crates/engine/Cargo.toml`, `crates/engine/src/lib.rs`, `crates/engine/src/cmd/{mod,masks,face_detect,face_recognize}.rs`,
+`crates/engine/src/faces_index.rs`, `crates/engine/src/media.rs`, `crates/gpu/Cargo.toml`, `crates/gpu/src/lib.rs`,
+`crates/ui-egui/Cargo.toml`, `crates/ui-egui/src/{lib,headless,model_setup,tests_panels}.rs`,
+`crates/ui-egui/src/panels/{faces,denoise,settings,masking,edit,person}.rs`, `apps/lightcraft/Cargo.toml`,
+`apps/lightcraft-cli/Cargo.toml`, `FEATURES.md`, `PROGRESS.md`.
+
+Tests added or fixed (M01): `crates/engine/src/tests_quarantine.rs` (new: quarantined commands answer with the
+stub error and stay registered), `crates/engine/src/tests_export.rs` and `crates/ui-egui/src/tests_folder_drop.rs`
+(Windows path-separator bugs in two inherited test files: the export path comparison and the `/`-normalised folder
+row ids; both failed on Windows before M01 and are unrelated to the quarantine), `crates/ui-egui/src/tests_error_kinds.rs`,
+`tests_masking.rs`, `tests_masking_layout.rs` (expectations updated to the new hidden-tile behaviour), and the AI test
+modules in `crates/engine/src/faces_index.rs`, `crates/ui-egui/src/{headless,model_setup,tests_panels}.rs` and the
+`panels/*` test modules are now gated on the `ai` pieces they exercise.
+
 ## Inherited feature verification (M00 session, 2026-10-21)
 
 Statuses are verified at code + test level. `works` = implemented end to end with passing tests in the repo;
@@ -96,7 +136,7 @@ per-camera colour calibration gap is tracked for M13.
 | Lens corrections and CA | works | `optics.*` incl. profile distortion/vignetting, `AutoLateralCA` -> `remove_ca`, defringe (`engine/src/crs.rs`); `crates/lensdb` (user-supplied data); `lens_profiles.rs` |
 | Vignette | works | `vignette.*` with 3 styles (`ui-egui/src/panels/edit.rs`); crs `PostCropVignette*` |
 | Selective adjust, brush, gradients | works | `mask.add`/`mask.addComponent` (`engine/src/cmd/masks.rs`) brush/linear/radial/luminance/colour-range + mask effects; AI shape suggestions separate |
-| Spot healing and blemish removal | works | spot commands (`engine/src/cmd/masks.rs`), heal stage; `spot.findBlemishes` additionally needs the YuNet download (`engine/src/cmd/face_detect.rs`); `tests_spots.rs` |
+| Spot healing and blemish removal | works | spot commands (`engine/src/cmd/masks.rs`), heal stage; the YuNet-based part of `spot.findBlemishes` (`engine/src/cmd/face_detect.rs`) is now behind the `ai` `faces` feature (M01), its classical part stays; `tests_spots.rs` |
 | JPEG and PNG export | works | `app.export` (`engine/src/cmd/export.rs`), `ExportFormat::{Jpeg,Png,Original,Dng}`; `tests_export.rs` |
 | Browse, ratings, flags, filmstrip | works | `library.browse`, `photo.rate/flag/label`, `view.filmstrip`; `tests_filmstrip.rs`, `tests_scroll.rs` |
 | Multi-folder catalog, keywords, collections | works | `folder.*`, `album.create/createSmart/setRules` (albums + smart albums), `keyword.*`; `tests_folders.rs`, `tests_organize.rs` |

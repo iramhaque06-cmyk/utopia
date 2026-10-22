@@ -26,14 +26,24 @@ egui = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
+# Test fixtures for the AI UI (synthetic ONNX models): pulled in only with the matching
+# feature, so a default build links no ML runtime (M01 AI quarantine).
+lightcraft-denoise = { workspace = true, optional = true, features = ["runtime"] }
+lightcraft-faces = { workspace = true, optional = true }
+
+[features]
+# AI quarantine (M01, RULES section 2): `ai` is the switch for the model-dependent UI.
+# Off by default the AI controls are hidden (not greyed out); the parts below are its pieces.
+ai = ["denoise", "faces", "sam"]
+denoise = ["lightcraft-engine/denoise", "dep:lightcraft-denoise"]
+faces = ["lightcraft-engine/faces", "dep:lightcraft-faces"]
+sam = ["lightcraft-engine/sam"]
 
 [dev-dependencies]
 # tests record why they skip (`cargo xtask ci` lists the skips)
 lightcraft-testkit = { workspace = true }
 egui_kittest = { workspace = true, features = ["wgpu", "snapshot"] }
-lightcraft-denoise = { workspace = true, features = ["runtime"] }
 lightcraft-codecs = { workspace = true }
-lightcraft-faces = { workspace = true }
 lightcraft-merge = { workspace = true }
 
 [build-dependencies]

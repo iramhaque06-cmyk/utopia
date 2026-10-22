@@ -264,7 +264,7 @@ fn person(s: &mut Session, p: &Value) -> Result<Value> {
     )
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), feature = "faces"))]
 mod imp {
     use std::sync::Arc;
     use std::time::{Duration, Instant};
@@ -1073,7 +1073,7 @@ mod imp {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(any(target_arch = "wasm32", not(feature = "faces")))]
 mod imp {
     use serde_json::Value;
 
@@ -1081,15 +1081,15 @@ mod imp {
     use crate::{Result, Session};
 
     pub fn index(_: &mut Session, _: &Value) -> Result<Value> {
-        Err(bad("faces.index", "this build cannot run face recognition"))
+        Err(bad("faces.index", "unsupported in this build: face recognition needs the `ai` cargo feature"))
     }
 
     pub fn suggest(_: &mut Session, _: &Value) -> Result<Value> {
-        Err(bad("faces.suggest", "this build cannot run face recognition"))
+        Err(bad("faces.suggest", "unsupported in this build: face recognition needs the `ai` cargo feature"))
     }
 
     pub fn evaluate(_: &mut Session, _: &Value) -> Result<Value> {
-        Err(bad("faces.evaluate", "this build cannot run face recognition"))
+        Err(bad("faces.evaluate", "unsupported in this build: face recognition needs the `ai` cargo feature"))
     }
 
     pub fn pump(_: &mut Session, _: &Value) -> Result<Value> {

@@ -780,14 +780,24 @@ pub fn specs() -> Vec<CommandSpec> {
                 Ok(json!({"spots": out, "added": found.len()}))
             }
         ),
-        cmd!(
-            "spot.findBlemishes",
-            "Find Blemishes",
-            [],
-            None,
-            "{sensitivity?: 0..100 (50), add?: bool (true), maxPerFace?: 1..20 (6)} — find small blemishes (darker or redder round spots on skin) on the faces of the active photo and add a heal spot on each (one undo step); needs the YuNet face detector (`faces.models.download {id: \"yunet-2023mar\"}`). Faces narrower than 160 px at 1600 px, and faces with more than 12 candidates (stubble, freckles, pores), get none → {faces, spots: [{x, y, size, face}], added}",
-            has_active,
-            |s, p| {
+    ]
+    .into_iter()
+    .chain(find_blemishes_specs())
+    .chain(spot_tail_specs())
+    .collect()
+}
+
+/// `spot.findBlemishes` needs the YuNet face detector (the `faces` part of the `ai` switch, M01).
+#[cfg(feature = "faces")]
+fn find_blemishes_specs() -> Vec<CommandSpec> {
+    vec![cmd!(
+        "spot.findBlemishes",
+        "Find Blemishes",
+        [],
+        None,
+        "{sensitivity?: 0..100 (50), add?: bool (true), maxPerFace?: 1..20 (6)} — find small blemishes (darker or redder round spots on skin) on the faces of the active photo and add a heal spot on each (one undo step); needs the YuNet face detector (`faces.models.download {id: \"yunet-2023mar\"}`). Faces narrower than 160 px at 1600 px, and faces with more than 12 candidates (stubble, freckles, pores), get none → {faces, spots: [{x, y, size, face}], added}",
+        has_active,
+        |s, p| {
                 let c = "spot.findBlemishes";
                 let id = s.active().ok_or_else(|| bad(c, "no active photo"))?;
                 let detector = super::face_detect::detector(s).map_err(|e| e.into_error(c))?;
@@ -836,7 +846,19 @@ pub fn specs() -> Vec<CommandSpec> {
                 s.set_develop(id, dd, "Find Blemishes")?;
                 Ok(json!({"faces": boxes.len(), "spots": out, "added": found.len()}))
             }
-        ),
+        )]
+}
+
+/// Without the `faces` part of `ai` (M01) the command keeps its id and label but can only
+/// answer with the clear "unsupported in this build" error.
+#[cfg(not(feature = "faces"))]
+fn find_blemishes_specs() -> Vec<CommandSpec> {
+    vec![super::ai_stub("spot.findBlemishes", "Find Blemishes")]
+}
+
+/// The spot and mask commands that need no AI: kept in every build (RULES section 2).
+fn spot_tail_specs() -> Vec<CommandSpec> {
+    vec![
         cmd!(
             "spot.add",
             "Add Remove Spot",

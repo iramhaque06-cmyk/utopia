@@ -385,6 +385,7 @@ impl Drop for Scanned {
 }
 
 #[cfg(test)]
+#[cfg_attr(not(feature = "faces"), allow(dead_code))] // M01: scanning tests run in the `ai` build
 mod tests {
     use super::*;
 
@@ -557,13 +558,16 @@ mod tests {
 /// What the recognition commands keep between calls: the loaded model and the embeddings made with it.
 #[derive(Default)]
 pub(crate) struct FacesState {
-    /// `<model id>@<sha256>` and the loaded model.
+    /// `<model id>@<sha256>` and the loaded model (needs the `faces` feature, M01).
+    #[cfg(feature = "faces")]
     pub embedder: Option<(String, Arc<lightcraft_faces::runtime::Embedder>)>,
     pub index: Index,
     /// When the models folder was last looked at (the per-frame pump trusts a look for a second).
     pub checked: Option<std::time::Instant>,
     /// Whether recognition was switched on when last looked up, and when.
     pub enabled_seen: Option<(std::time::Instant, bool)>,
+    /// The YuNet detection worker (needs the `faces` feature, M01).
+    #[cfg(feature = "faces")]
     pub worker: Option<crate::faces_worker::Worker>,
     /// After a failure to load the chosen model, the background pump leaves it alone until then.
     pub retry_at: Option<std::time::Instant>,
@@ -593,7 +597,7 @@ impl FacesState {
         self.index.reset("", 0, None);
         self.scanned.reset(None);
         self.scan_failed.clear();
-        self.embedder = None;
+        self.clear_embedder();
         self.checked = None;
         self.queue.clear();
         self.queue_stamp = None;
@@ -602,6 +606,16 @@ impl FacesState {
         self.saved_at = None;
         self.epoch = self.epoch.wrapping_add(1);
     }
+
+    /// The loaded recognition model is dropped when the library changes (the `faces` part of `ai`).
+    #[cfg(feature = "faces")]
+    fn clear_embedder(&mut self) {
+        self.embedder = None;
+    }
+
+    /// No recognition model can be loaded without the `faces` feature.
+    #[cfg(not(feature = "faces"))]
+    fn clear_embedder(&mut self) {}
 
     /// Photo `id`'s file was replaced by other content: the faces made from the old pixels are dropped and the photo is
     /// searched again (issue #1524). What a worker is still making from the old file is dropped when it comes back.
