@@ -31,10 +31,17 @@ pub(crate) struct Pending {
 }
 
 pub(crate) fn denoise_requested(app: &LightcraftApp, id: PhotoId) -> bool {
+    // M01 AI quarantine: the model set-up flow is hidden without the `denoise` part of `ai`.
+    if !cfg!(feature = "denoise") {
+        return false;
+    }
     app.model_setup.denoise.as_ref().is_some_and(|r| r.photo == id && r.valid(app))
 }
 
 pub(crate) fn intercept(app: &mut LightcraftApp, command: &str, params: &Value) -> Option<Result<Value, String>> {
+    if !cfg!(feature = "denoise") {
+        return None;
+    }
     if matches!(command, "app.openLibrary" | "file.restoreLibrary") {
         app.model_setup = Pending::default();
         return None;
@@ -92,6 +99,9 @@ pub(crate) fn intercept(app: &mut LightcraftApp, command: &str, params: &Value) 
 }
 
 pub(crate) fn notice(app: &mut LightcraftApp, ui: &mut egui::Ui, kind: &str) {
+    if !cfg!(feature = "denoise") {
+        return;
+    }
     if kind != "denoise" || !app.model_setup.denoise.as_ref().is_some_and(|r| r.valid(app)) {
         return;
     }
@@ -119,6 +129,9 @@ fn abandoned(app: &mut LightcraftApp) -> bool {
 }
 
 pub(crate) fn pump(app: &mut LightcraftApp, ctx: &egui::Context) {
+    if !cfg!(feature = "denoise") {
+        return;
+    }
     if app.model_setup.denoise.is_none() {
         return;
     }

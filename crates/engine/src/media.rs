@@ -1505,6 +1505,7 @@ impl crate::Session {
     /// photo's edits do not matter, and the camera's own JPEG (oriented, display-ready) costs a fraction of decoding the
     /// raw. `None` for anything else, and where the host installed no loader.
     #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(not(feature = "faces"), allow(dead_code))]
     pub(crate) fn scan_preview_of(&self, p: &Photo) -> Option<(String, PreviewLoader)> {
         match (&p.source, &self.media.preview_loader) {
             (Source::File { path }, Some(l)) if p.kind == MediaKind::Raw => Some((path.clone(), l.clone())),

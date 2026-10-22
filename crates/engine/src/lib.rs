@@ -26,17 +26,26 @@ pub mod contact_sheet;
 pub mod crs;
 pub mod crs_masks;
 pub mod demo;
+// The denoise metadata/state stays compiled without `ai` (settings, cached pictures and the
+// render path use it); only its AI half is unreachable then, by design (M01).
+#[cfg_attr(not(feature = "denoise"), allow(dead_code))]
 pub mod denoise;
 pub mod devices;
 pub mod display;
 pub mod doc_path;
 mod errors;
 pub mod export;
+/// Face-model downloads (`faces.models.download`): part of the `ai` switch (M01).
+#[cfg(feature = "faces")]
 pub mod face_download;
 pub mod face_tiles;
+// The face-region index/state stays compiled without `faces` (naming face regions and their
+// views are data); only its recognition half is unreachable then, by design (M01).
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg_attr(not(feature = "faces"), allow(dead_code))]
 mod faces_index;
-#[cfg(not(target_arch = "wasm32"))]
+/// The YuNet detection worker: part of the `ai` switch (M01).
+#[cfg(all(feature = "faces", not(target_arch = "wasm32")))]
 mod faces_worker;
 pub mod files;
 #[cfg(not(target_arch = "wasm32"))]
@@ -56,6 +65,8 @@ pub mod logging;
 pub mod media;
 pub mod memory;
 pub mod merge;
+// Denoise-model downloads are dead without `denoise` (the commands answer `AI_UNSUPPORTED`).
+#[cfg_attr(not(feature = "denoise"), allow(dead_code))]
 mod model_download;
 pub mod open_path;
 pub mod originals;
@@ -248,10 +259,12 @@ pub struct Session {
     /// Where the host keeps face models (one folder each); `None` where there is no file system (the web).
     pub face_models_dir: Option<std::path::PathBuf>,
     /// Face model downloads started this session (the staged files wait in `<face_models_dir>/.downloads`).
+    #[cfg(feature = "faces")]
     pub face_downloads: face_download::Downloads,
     /// Reverse geocoding: the parsed place names and their download (`metadata.*PlaceNames`).
     pub place_names: cmd::geocode::PlaceNames,
     /// The user's own list of models to download (`catalog.json` in the models folder), as last read.
+    #[cfg(feature = "faces")]
     pub(crate) face_catalog: lightcraft_faces::catalog::Catalog,
     /// The loaded recognition model and the face embeddings made with it.
     #[cfg(not(target_arch = "wasm32"))]
@@ -437,8 +450,10 @@ impl Session {
             unsaved_sidecars: Default::default(),
             denoise: Default::default(),
             face_models_dir: None,
+            #[cfg(feature = "faces")]
             face_downloads: Default::default(),
             place_names: Default::default(),
+            #[cfg(feature = "faces")]
             face_catalog: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]
             faces: Default::default(),
@@ -1250,13 +1265,13 @@ mod tests_albums_local;
 mod tests_color;
 #[cfg(test)]
 mod tests_crop_angle;
-#[cfg(test)]
+#[cfg(all(test, feature = "denoise"))]
 mod tests_denoise;
 #[cfg(test)]
 mod tests_export;
-#[cfg(test)]
+#[cfg(all(test, feature = "faces"))]
 mod tests_face_models;
-#[cfg(test)]
+#[cfg(all(test, feature = "faces"))]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests_face_recognize;
 #[cfg(test)]
@@ -1304,6 +1319,9 @@ mod tests_presets_scale;
 mod tests_print;
 #[cfg(test)]
 mod tests_process;
+
+#[cfg(test)]
+mod tests_quarantine;
 #[cfg(test)]
 mod tests_recheck;
 #[cfg(test)]

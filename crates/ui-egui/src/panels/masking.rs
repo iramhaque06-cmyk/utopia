@@ -93,7 +93,9 @@ pub fn show(app: &mut LightcraftApp, ui: &mut egui::Ui, id: PhotoId) {
     egui::Frame::NONE.inner_margin(egui::Margin { left: 24, right: 22, top: 0, bottom: 10 }).show(ui, |ui| {
         ui.label(egui::RichText::new(crate::i18n::tr("Create New Mask")).color(t.text_dim));
         ui.add_space(6.0);
-        let tiles: [(&str, &str, Icon); 10] = [
+        // M01 AI quarantine: Object and Describe need SAM 3 (the `sam` part of `ai`) and are
+        // hidden (not greyed out) without it. The other shapes are non-AI and stay.
+        let mut tiles: Vec<(&str, &str, Icon)> = vec![
             ("object", "Object", Icon::Subject),
             ("prompt", "Describe", Icon::Subject),
             ("subject", "Subject", Icon::Subject),
@@ -105,6 +107,9 @@ pub fn show(app: &mut LightcraftApp, ui: &mut egui::Ui, id: PhotoId) {
             ("luminanceRange", "Luminance", Icon::Sliders),
             ("colorRange", "Color", Icon::Picker),
         ];
+        if !cfg!(feature = "sam") {
+            tiles.retain(|(kind, _, _)| *kind != "object" && *kind != "prompt");
+        }
         // four 52 pt tiles a row when they and their labels fit, else fewer (wider for a long label)
         let widest = |size: f32| {
             let font = t.font(size);

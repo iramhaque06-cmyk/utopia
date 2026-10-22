@@ -22,7 +22,7 @@ use crate::{AiModel, EngineError, Result, Session};
 
 const C: &str = "faces.detect";
 /// Regions made by this command say so in their description; only those are replaced on a new run.
-pub(crate) const MARK: &str = "Detected by ";
+pub(crate) const MARK: &str = super::FACE_DETECT_MARK;
 pub(crate) const LABEL: &str = "YuNet 2023mar";
 /// Long edge of the picture the detector looks at (it shrinks it to its own 640 anyway).
 const LOOK_EDGE: usize = 1280;

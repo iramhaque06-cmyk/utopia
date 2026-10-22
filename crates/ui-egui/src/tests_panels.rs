@@ -2025,6 +2025,7 @@ fn the_tracklog_toast_shows_after_a_while() {
 /// the box is off and clicking it changes nothing. Installing a model switches recognition on by
 /// itself, and from then on the box turns it off and on.
 #[test]
+#[cfg(feature = "faces")] // M01: recognition set-up is part of the `ai` build
 fn recognise_faces_stays_off_until_a_model_is_chosen() {
     let mut h = demo([1400.0, 900.0], json!({"view": "photoGrid"}));
     let dir = std::env::temp_dir().join(format!("lc-ui-faces-toggle-{}", std::process::id()));

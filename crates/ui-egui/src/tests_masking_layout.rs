@@ -54,7 +54,12 @@ fn masking_tile_labels_fit_without_eliding_at_supported_panel_widths() {
         for width in [250.0, 270.0, 330.0, 520.0] {
             for scale in [1.0, 2.0] {
                 let (texts, widgets) = panel(width, scale, locale, false);
-                for (kind, label) in [("background", "Background"), ("luminanceRange", "Luminance"), ("prompt", "Describe")] {
+                // M01: Describe needs the `sam` part of `ai` and its tile is hidden without it
+                let mut kinds = vec![("background", "Background"), ("luminanceRange", "Luminance")];
+                if cfg!(feature = "sam") {
+                    kinds.push(("prompt", "Describe"));
+                }
+                for (kind, label) in kinds {
                     crate::i18n::set_language(locale);
                     let label = crate::i18n::tr(label).to_string();
                     crate::i18n::set_language(Locale::En);
