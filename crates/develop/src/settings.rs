@@ -126,6 +126,9 @@ pub struct DevelopSettings {
     pub grading: ColorGrading,
     pub effects: Effects,
     pub vignette: Vignette,
+    /// Glow strength 0..100 (M02 stub).
+    #[serde(skip_serializing_if = "Glow::is_default")]
+    pub glow: Glow,
     pub grain: Grain,
     pub detail: Detail,
     pub optics: Optics,
@@ -161,6 +164,7 @@ impl Default for DevelopSettings {
             grading: ColorGrading::default(),
             effects: Effects::default(),
             vignette: Vignette::default(),
+            glow: Glow::default(),
             grain: Grain::default(),
             detail: Detail::default(),
             optics: Optics::default(),
@@ -607,6 +611,21 @@ pub struct Grain {
 impl Default for Grain {
     fn default() -> Self {
         Self { amount: 0.0, size: 25.0, roughness: 50.0, seed: 0 }
+    }
+}
+
+/// Glow (M02 stub; the threshold + wide blur + screen blend arrives in M03, EFFECTS_SPEC section 1).
+/// Omitted from the settings JSON while at its default, so settings saved before M02 keep their exact
+/// bytes and `hash64`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Glow {
+    pub amount: f64,
+}
+
+impl Glow {
+    fn is_default(&self) -> bool {
+        *self == Self::default()
     }
 }
 

@@ -1000,7 +1000,8 @@ fn same_folder_as_original_exports_next_to_each_photo() {
     assert_eq!(got, want);
     assert!(!dir.join("unused").exists(), "nothing written to the specific folder");
     // again: each folder's own collision gets the next free name
-    let files = crate::export::export_batch(&mut s, &ids, &o, &to, &mut crate::export::write_file, &exists).unwrap();        assert!(files.iter().all(|f| std::path::Path::new(f["path"].as_str().unwrap()).ends_with("Exports/IMG_1-2.jpg")), "{files:?}");
+    let files = crate::export::export_batch(&mut s, &ids, &o, &to, &mut crate::export::write_file, &exists).unwrap();
+    assert!(files.iter().all(|f| std::path::Path::new(f["path"].as_str().unwrap()).ends_with("Exports/IMG_1-2.jpg")), "{files:?}");
     // no subfolder: next to the original, which is never written over
     let beside = ExportOptions { subfolder: String::new(), conflict: Conflict::Overwrite, ..o.clone() };
     let err = crate::export::export_batch(&mut s, &ids, &beside, &to, &mut crate::export::write_file, &exists).unwrap_err();

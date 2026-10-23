@@ -313,6 +313,8 @@ pub fn show(app: &mut LightcraftApp, ui: &mut egui::Ui, id: PhotoId) {
         for c in ["effects.texture", "effects.clarity", "effects.dehaze"] {
             control(app, ui, d, c, true);
         }
+        sub_title(ui, crate::i18n::tr("Glow"));
+        control(app, ui, d, "glow.amount", true);
         sub_title(ui, crate::i18n::tr("Vignette"));
         {
             use lightcraft_develop::VignetteStyle as V;

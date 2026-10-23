@@ -183,6 +183,8 @@ pub struct FinishParams {
     pub ev: f32,
     /// Grain: amount, cell size (px), roughness, seed.
     pub grain: Option<(f32, f32, f32, u32)>,
+    /// Glow (M02 stub): strength 0..1; `None` at amount 0, so the pass is an exact identity.
+    pub glow: Option<f32>,
     /// Output px → normalized oriented coordinates.
     pub out_to_norm: lightcraft_geom::Affine,
     pub ow: f64,
@@ -222,6 +224,8 @@ impl FinishParams {
             let cell = (0.0006 + (s.grain.size / 100.0) as f32 * 0.0024) * px_per_long as f32;
             ((s.grain.amount / 100.0) as f32 * 0.13, cell.max(0.6), (s.grain.roughness / 100.0) as f32, s.grain.seed)
         });
+        // Glow (M02 stub): like grain, switched off with the Effects section; 0 → exact identity.
+        let glow = (s.glow.amount > 0.0 && effects).then(|| (s.glow.amount / 100.0) as f32);
         let calibration = s.section_enabled("calibration");
         let peak = s.hdr.peak();
         FinishParams {
@@ -250,6 +254,7 @@ impl FinishParams {
             gain,
             ev,
             grain,
+            glow,
             out_to_norm: frame.out_to_norm(w, h),
             ow: frame.ow,
             oh: frame.oh,
@@ -384,6 +389,7 @@ pub(crate) fn finish_with<T: Copy + Default + Send>(
         gain,
         ev,
         grain,
+        glow,
         ..
     } = fp;
     let (hl, sh, clar, tex, dehaze, sharpen, sharpen_mask, air, air_pre, gain, ev) =
@@ -607,6 +613,17 @@ pub(crate) fn finish_with<T: Copy + Default + Send>(
                 warn = Some(crate::output::PROOF_DISPLAY_WARNING);
             }
             r = mapped;
+
+            // --- glow (M02 stub, linear light)
+            if let Some(amt) = *glow {
+                // Placeholder for the threshold, wide blur and screen blend of EFFECTS_SPEC section 1
+                // (M03): a pointwise bright-pass lift. Strength 0 never enters this branch, so the
+                // default render is an exact identity.
+                let lum = 0.2126 * r[0] + 0.7152 * r[1] + 0.0722 * r[2];
+                let b = (lum - 0.75).max(0.0);
+                let k = amt * 0.5 * b / (1.0 + b);
+                r = r.map(|v| v + k);
+            }
 
             // --- encode, curves, grain
             let mut e = if hdr {

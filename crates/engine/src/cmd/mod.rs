@@ -70,10 +70,7 @@ mod face_detect {
     pub(crate) const MARK: &str = super::FACE_DETECT_MARK;
 
     pub(crate) fn specs() -> Vec<CommandSpec> {
-        [("faces.detect", "Detect Faces"), ("faces.gpu", "Face Detection GPU")]
-            .iter()
-            .map(|&(id, label)| ai_stub(id, label))
-            .collect()
+        [("faces.detect", "Detect Faces"), ("faces.gpu", "Face Detection GPU")].iter().map(|&(id, label)| ai_stub(id, label)).collect()
     }
 }
 #[cfg(not(feature = "faces"))]
@@ -185,8 +182,7 @@ pub(crate) const FACE_DETECT_MARK: &str = "Detected by ";
 
 /// Why an AI command refuses to run in a build without that part of the `ai` feature.
 #[cfg(any(not(feature = "denoise"), not(feature = "faces")))]
-pub(crate) const AI_UNSUPPORTED: &str =
-    "unsupported in this build: LightCraft was built without AI (the `ai` cargo feature is off; RULES section 2)";
+pub(crate) const AI_UNSUPPORTED: &str = "unsupported in this build: LightCraft was built without AI (the `ai` cargo feature is off; RULES section 2)";
 
 /// `enabled` of an AI command this build does not include: every call answers with
 /// [`EngineError::Disabled`], naming the command and why.
