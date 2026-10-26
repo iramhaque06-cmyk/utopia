@@ -33,7 +33,7 @@ Every agent session must follow these. If a task seems to require breaking one, 
 ## 5. Code quality
 
 - Follow `AGENTS.md` and the repo's layer rules. Lower layers must not depend on UI crates.
-- New logic goes in the engine and is exposed through the existing command registry. Simple mode must not duplicate logic from Pro mode.
+- New logic goes in the engine and is exposed through the existing command registry. UI code must not duplicate engine logic, and every parameter exists exactly once (Basic vs. Advanced only changes visibility).
 - Small, reviewable diffs. Do not reformat or refactor unrelated files.
 - Every new feature gets tests. Run `cargo xtask ci` (or the closest working subset on Windows) before declaring a milestone done. If something cannot run on Windows, say so and list what was skipped.
 - If you hit the same error three times, stop, summarize what you tried, and ask.
@@ -59,3 +59,12 @@ Every agent session must follow these. If a task seems to require breaking one, 
 
 - Tests catch math errors, not ugliness. After any visual change, render before/after images of at least five test photos into `test-images/_renders/` (git-ignored) and tell the human which to look at.
 - Defaults must look good, not dramatic. If an effect looks harsh at its default, lower the default.
+
+## 9. Reference material
+
+- Allowed: public documentation, behavior notes written from public sources or from our own use of an app, general image-processing literature.
+- Not allowed: decompiled, extracted or dumped material from any proprietary app (code, shaders, strings, assets, model files, APK or IPA contents).
+- AI-written notes about another app are **unverified hypotheses**. Never treat them as ground truth; verify by observation and tune by eye.
+- Do not add files that describe reverse-engineered or "pixel-perfect clone" specifications of another app to this repo. Keep such files outside the repository. Product-relevant behavior is distilled into DESIGN_DECISIONS.md and EFFECTS_SPEC.md.
+- Behavior, not appearance: do not replicate another app's tool-grid layout, icons, colors, visual theme, preset names, or film-stock names and codes. Our look and navigation are our own.
+- If a file like this is found in the repo, tell the human and remove it from the working tree; do not rewrite git history without approval.

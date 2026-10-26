@@ -40,8 +40,9 @@ For each new effect, on at least 5 test photos at default and at 50% and 100% st
 
 ## 4. UI checks
 
-- [ ] Simple mode: drag up/down selects a parameter; left/right changes value; fallback list and keyboard arrows work.
-- [ ] Toggle Simple <-> Pro keeps the photo, edits and undo history.
+- [ ] Each tool panel: preset tiles work; main controls cover common edits; the Advanced section collapses, expands and remembers its state.
+- [ ] Optional scrub input: drag up/down selects a parameter, left/right changes it; visible list and arrow keys work.
+- [ ] Tool search (Ctrl+K) finds every tool by name.
 - [ ] Hold-to-compare shows the original and returns cleanly.
 - [ ] High-DPI and standard displays; window resize; dark theme legibility.
 - [ ] Keyboard-only use is possible for core actions.

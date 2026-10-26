@@ -12,20 +12,19 @@ Conventions:
 
 ## 1. Glow
 
-Soft, dreamy highlight glow.
+Broad, soft, dreamy diffusion (portraits, atmosphere). **Different from Bloom and Halation.**
 
-**Technique:** extract highlights above a threshold, blur wide, add back with a screen blend.
+**Technique:** build a multi-scale softened layer (edge-aware, so it does not become a plain blur), weight it by luminance so highlights and bright midtones contribute most, blend it with the original using a soft mix, and keep a portion of the original fine contrast so detail is softened, not erased. Saturation and Warmth act on the glow layer's result separately.
 
 | Slider | Range (proposed) | Default | Notes |
 |---|---|---|---|
-| Strength | 0 to 100 | 0 | Blend amount of the glow layer |
-| Size | 0 to 100 | 40 | Blur radius as fraction of long edge (about 0.5% to 6%) |
-| Range | 0 to 100 | 50 | Moves the highlight threshold; low values glow only the brightest tones, high values glow most of the image |
-| Warmth | -100 to 100 | 0 | Hue shift applied to the glow layer only |
+| Glow | 0 to 100 | 0 | Amount of diffusion |
+| Saturation | -100 to 100 | 0 | Colour vibrance of the glowing result; independent of Glow |
+| Warmth | -100 to 100 | 0 | Cool to warm cast on the glow |
 
-Presets: 6 original styles (names TBD), each a bundle of slider values.
+Style tiles: 6 original styles (names TBD), each a bundle of values plus a different softness character.
 
-Acceptance: identity at Strength 0; monotonic increase in glow with Strength; scale-independent; no clipping artifacts on white skies.
+Acceptance: identity at Glow 0; useful at low values without a milky, washed-out look; fine skin texture softens as Glow rises; Saturation and Warmth still work when Glow is low; Glow and Bloom must look clearly different at default settings.
 
 ## 2. Bloom
 
@@ -54,7 +53,9 @@ Warm fringe around bright edges, as light scatters through film base.
 | Radius | 0 to 100 | 40 |
 | Tint | -100 to 100 | 0 (red-orange baseline; shifts toward magenta or yellow) |
 
-Acceptance: only pixels above threshold contribute; identity at 0; no color shift in areas below threshold.
+The halation layer is concentrated **around** bright edges (subtract part of the source footprint from the blurred, tinted layer so the fringe sits around the source, not on it). It must not be Bloom with a red tint.
+
+Acceptance: only pixels above threshold contribute; lowering Threshold changes which sources qualify, not just overall redness; raising Strength does not change which regions qualify; bright neutral edges against dark show a warm halo; flat midtones are not uniformly tinted; identity at 0; no color shift below threshold.
 
 ## 4. Film grain (extend existing grain)
 
@@ -63,6 +64,8 @@ Existing sliders (amount, size, roughness, seed) are kept. Add:
 - **Luminance response:** amplitude is highest in shadows and midtones and lighter in highlights (proposed curve: amplitude = base * (1 - smoothstep(0.6, 1.0, luminance)) with a small floor).
 - **Style Strength** (0 to 100, default 100): scales the color look of a chosen look/style separately from grain. At 0, grain only; at 100, full look.
 - **Monochrome vs. chroma grain** toggle (proposed).
+- **UI:** Grain and Style Strength are in the Basic row; Size and Roughness are under Advanced.
+- Grain at 0 adds none; Style Strength at 0 keeps grain and removes the look. A one-knob implementation is wrong.
 
 Acceptance: deterministic per seed; identity at amount 0; changing size does not change average brightness.
 
@@ -108,7 +111,9 @@ Simulated shallow depth of field.
 
 **Technique:** disc-kernel (or approximated) blur whose radius is driven by distance from the focus shape; highlights above a threshold can be boosted slightly to produce bokeh.
 
-Acceptance: inside the focus shape stays sharp; transition is symmetric; identity at Strength 0; scale-independent.
+Interaction: dragging the centre moves the focus; with a handle selected, pinch resizes it and two-finger rotation (or a rotate handle) rotates it; tap elsewhere to deselect and zoom normally. Blur Strength does not move the focus; Transition changes only the boundary width; Vignette Strength is independent of geometry; bokeh shape changes only bright blurred highlights.
+
+Acceptance: inside the focus shape stays sharp; transition is symmetric and follows the band's orientation; no banding or hard cutoff; identity at Strength 0; scale-independent; Vignette Strength 0 leaves blur but removes edge darkening.
 
 ## 8. Tone tools (working names)
 
@@ -121,6 +126,43 @@ Built on the existing local-Laplacian tone code. Each has 4 preset styles.
 | **Tone Zones** (tonal contrast) | High, Mid, Low contrast; Protect Shadows; Protect Highlights |
 
 Acceptance: identity at 0; no halos on a hard-edge test image; no hue shifts in neutrals.
+
+
+## 9. Motion blur (no AI in Phase 1)
+
+Directional blur that looks like movement, not a Gaussian.
+
+| Control | Range (proposed) | Notes |
+|---|---|---|
+| Angle | 0 to 360 | Direction of motion |
+| Speed | 0 to 100 | Trail length as a fraction of the long edge |
+| Acceleration | -100 to 100 | Shapes the trail falloff (even, ramping up, or tapering), not just opacity |
+| Region | mask | Ellipse/linear/brush region from our mask tools; panning mode keeps the region sharp and blurs the outside |
+| Presets | 4 original | e.g. pan, speed trail |
+
+Technique: directional line-integral blur with a falloff kernel set by Acceleration; edge-aware blending at the region boundary to avoid cut-out halos. Subject/background isolation is **Phase 3 (AI)**.
+
+Acceptance: identity at Speed 0; blur follows Angle; Acceleration changes the trail shape; no halo at region edges; scale-independent.
+
+## 10. Colour Grading panel (merges HSL and split toning)
+
+UI text says "Colour Grading". Code identifiers keep the repo's `color` spelling.
+
+- **Mixer (Advanced):** per-band hue, saturation, luminance (existing 8-band mixer) with drag-on-photo targeting.
+- **Wheels (Advanced):** shadows, midtones, highlights, global; hue, saturation, luminance each; Blending and Balance.
+- **Moods (top of the panel, not a tab):** original preset colour looks (6 to 10) with an Amount slider.
+- **Basic row (top of panel):** mood tiles plus Mood Strength, Shadow Tint, Highlight Tint, Vibrance. Mixer and Wheels are tabs under Advanced.
+- **Migration:** a legacy split-toning control moves into Wheels with a process-version-safe mapping; old edits render pixel-identically and old sidecars still load.
+
+Acceptance: identity at defaults; no spill into adjacent hues or skin tones at moderate values; Mixer and Wheels edits compose predictably; settings round-trip.
+
+## 11. Black & White
+
+Colour-filter mixing (channel weights with filter presets such as warm, cool, red, green), tone controls, optional grain, and a film-style tone curve. Acceptance: changing the colour filter changes how source colours map to grey; identity when the tool is off; grain obeys the Film Grain rules.
+
+## 12. Frames
+
+Borders added **after all other effects** so they are never blurred. Controls: style (4 to 6 original), width, colour. Option: border overlays the image or expands the canvas. Acceptance: border independent of image pixels; export size matches the chosen behavior.
 
 ---
 
