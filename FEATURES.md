@@ -13,7 +13,7 @@
 | Crop, rotate, straighten, perspective | inherited (verify) | Free | 1 |
 | Basic: exposure, contrast, highlights, shadows, whites, blacks, white balance, saturation, vibrance, sharpening | inherited (verify) | Free | 1 |
 | Tone curve (RGB and per channel) | inherited (verify) | Free | 1 |
-| HSL / color mixer, color grading | inherited (verify) | Free | 1 |
+| Colour Grading panel: Mixer (HSL) + Wheels + Moods, merged; legacy split toning migrated | inherited (verify) + UI change | Free | 1 |
 | Calibration and color profiles | inherited (verify) | Free | 1 |
 | Dehaze, clarity, texture, local contrast | inherited (verify) | Free | 1 |
 | Lens corrections and chromatic aberration (profile based, user supplies lens data) | inherited (verify) | Free | 1 |
@@ -34,6 +34,9 @@
 | Vintage texture: light leaks and dust/scratches | new | Free | 1 |
 | Lens blur (linear and elliptical focus, bokeh shapes) | new | Free | 1 |
 | Tone tools: Punch, Expanse, Tone Zones (working names) | new | Free | 1 |
+| Motion blur (directional, no AI) | new | Free | 1 |
+| Black & White with colour filters | new | Free | 1 |
+| Frames (applied last) | new | Free | 1 |
 
 ## Library and workflow
 
@@ -48,15 +51,18 @@
 | Custom keyboard shortcuts | inherited (verify) | Pro | 1 |
 | XMP-compatible sidecar files | inherited (verify) | Pro | 1 |
 
-## Simple mode (new UI)
+## Interface (single full mode)
 
 | Feature | Source | Intended tier | Phase |
 |---|---|---|---|
-| Simple view: large photo, tool carousel, preset tiles | new | Free | 1 |
-| Drag up/down to select parameter, left/right to change | new | Free | 1 |
-| Visible parameter list and keyboard fallbacks | new | Free | 1 |
-| Hold-to-compare before/after | new | Free | 1 |
-| Toggle between Simple and Pro on the same photo | new | Free | 1 |
+| Edit view: large photo, tool rail, one panel at a time | new | Free | 1 |
+| Every tool panel: preset tiles plus main controls on top, collapsible Advanced section | new | Free | 1 |
+| Optional scrub input (drag up/down picks a parameter, left/right changes it), with visible list and arrow keys | new | Free | 1 |
+| Tool search (Ctrl+K) and one-line descriptions with "?" tips | new | Free | 1 |
+| Hold-to-compare and split view | new | Free | 1 |
+| Tool lifecycle: Apply / Cancel, one history item per tool, reopen from a visible stack | new | Free | 1 |
+| Start screen: recent files grid, Add Photo, drag-and-drop, Quick Open (no import needed) | new | Free | 1 |
+| Tap-to-place Spot and brush heal (needs legal review, see DESIGN_DECISIONS) | new | Free | 1 |
 
 ## Platform
 
@@ -75,4 +81,8 @@
 | Portrait and face tools | 3 |
 | AI subject, sky and person masks | 3 |
 | AI denoise and model-based object removal | 3 |
+| Double Exposure (blend modes) | after release candidate |
+| Text overlay | after release candidate |
+| Look sharing as portable file or QR | 2 or later |
+| Motion blur subject isolation | 3 |
 | Cloud sync or accounts | not planned |
