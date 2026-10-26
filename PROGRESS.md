@@ -16,22 +16,31 @@ The agent reads this at the start of every session and appends to it at the end.
 
 Status: `[ ]` not started, `[~]` in progress, `[x]` done and human-approved.
 
-- [~] M00 Orientation, toolchain check, repo and GitHub setup
-- [~] M01 AI quarantine behind cargo feature `ai` (default off)
-- [ ] M02 Stub effect proves the end-to-end path
-- [ ] M03 Glow and Bloom (CPU reference)
-- [ ] M04 Halation
-- [ ] M05 GPU parity for effects so far
-- [ ] M06 Film grain upgrade
-- [ ] M07 Film looks and Looks system
-- [ ] M08 Vintage texture (light leaks and dust)
-- [ ] M09 Lens blur
-- [ ] M10 Tone tools (Punch, Expanse, Tone Zones)
-- [ ] M11 Simple mode shell
-- [ ] M12 Simple mode tool pages and compare
-- [ ] M13 Verify inherited features on Windows, fix gaps
-- [ ] M14 Windows packaging and performance
-- [ ] M15 Rebrand, QA pass, release candidate
+Renumbered 2026-10-26 to match PROMPTS.md (v2); GitHub issues #20-#39 track M03-M22.
+
+- [~] M00 Orientation, toolchain check, repo and GitHub setup (PR #17)
+- [~] M01 AI quarantine behind cargo feature `ai` (default off) (PR #18)
+- [~] M02 Sync docs and re-create issues (issues done; docs-v2 replacement pending the v2 file set)
+- [~] M03 Stub effect proves the path (PR #19; branch `m02-stub-effect`, named from the v1 prompt label)
+- [ ] M04 Glow (distinct from Bloom)
+- [ ] M05 Bloom
+- [ ] M06 Halation
+- [ ] M07 GPU parity
+- [ ] M08 Film grain upgrade
+- [ ] M09 Colour Grading (merge HSL and split toning)
+- [ ] M10 Film looks and Looks system
+- [ ] M11 Vintage texture
+- [ ] M12 Lens blur
+- [ ] M13 Motion blur
+- [ ] M14 Tone tools
+- [ ] M15 Black & White and Frames
+- [ ] M16 Tool lifecycle and edit stack (behavior only)
+- [ ] M17 Interface foundation (PARKED - design phase)
+- [ ] M18 Panel design pass (PARKED - design phase)
+- [ ] M19 Spot and brush heal (legal review first)
+- [ ] M20 Verify inherited features on Windows
+- [ ] M21 Windows packaging and performance
+- [ ] M22 Rebrand, QA, release candidate
 
 ## Phase 2 (later, not started)
 
@@ -53,6 +62,13 @@ Append newest at the bottom. Format:
 - Known issues:
 - Decisions needed from human:
 ```
+
+### 2026-10-26  Session 4  (Buffy / Codebuff, v2 M02 issue sync + v2 M03 verification)
+- Changed: (1) Finished the v2 M03 stub-effect work (branch `m02-stub-effect`, commit `9c16ec49`, PR #19 - named "M02" from the v1 prompt label; PROMPTS.md v2 calls it M03). (2) GitHub PRs: PR #18 (M01, opened by the human with an empty body) - filled in its full description; PR #19 (stub effect) created with summary, files, tests and known issues. Both through the GitHub REST API with this repo's git credential because the MCP token lacks `pull-requests: write` ("Resource not accessible by personal access token"); the MCP also denies `update_issue` while `create_issue` works. (3) v2 M02 issue sync with the human-provided PROMPTS.md: created issues #20-#39 = M03-M22, one per milestone, bodies copied from the matching prompt, label `phase-1` (M03 #20 carries a note that it is already implemented in PR #19; M17/M18 #34/#35 marked parked; M19 #36 carries the patent-review warning). Old issues #3-#16 relabelled `superseded` (label created) and closed with per-issue mapping comments (old M03 Glow+Bloom splits into M04 #21 + M05 #22; old M11/M12 Simple mode maps to parked M17 #34 / M18 #35); old #1/#2 closed as completed (PRs #17/#18; v2 keeps M00/M01 unchanged). No repo settings or visibility changed. (4) PROGRESS.md milestone list renumbered to PROMPTS.md v2. FEATURES.md untouched: its `inherited (verify)` rows were all verified with per-row evidence in Session 1, so there was nothing unverified to update.
+- Tests run / results: ui-egui full suite 1084 passed / 13 failed / 4 ignored; the 13 are the known background-settle/timing family (before_after x4, labels x2, slideshow x1, preview_limit x5) and all pass under reduced concurrency (7 pass with `--test-threads=1`, the 5 preview_limit pass in isolation) - no M02 regressions. Glow tests 5/5 (pipeline 2, engine 3); fmt and clippy green (Session 3). NOT run here: full `cargo xtask ci` (its wasm step needs toolchain extras on this Windows box).
+- Left to do: the PROMPTS.md "Before M02" docs step - replace `docs/product/` with the v2 file set (DESIGN_DECISIONS.md is new), branch `docs-v2`, PR, self-merge - is blocked: only PROMPTS.md was provided and this repo has no `docs/product/` (product docs live at the repo root). Human review of PRs #18 and #19 including the RULES section 8 visual check of the Glow slider.
+- Known issues: the ui-egui settle/thumbnail/slideshow tests fail under harness parallelism on this machine (a different subset per run); run those families with `--test-threads=1` or accept a rerun. The GitHub MCP token can create issues but not PRs or issue updates - the REST fallback used the human's own git credential (token never printed or stored). Carried from M01: paging-file exhaustion under parallel rustc (`-j 2` needed); no `CRAFT_FONTS_DIR`; empty `corpus/`.
+- Decisions needed from human: (1) merge PRs #18 and #19; (2) provide the v2 docs set (PROGRESS.md, RULES.md, DESIGN_DECISIONS.md, EFFECTS_SPEC.md ...) for the docs-v2 step, or confirm the root-level docs should be updated in place; (3) M01 carry-overs still open (app name for M22; grain retune vs pixel-identity for M08; test photos for the render tasks).
 
 ### 2026-10-22  Session 3  (Buffy / Codebuff, M02)
 - Changed: M02 stub effect "Glow" (`glow.amount` 0–100, default 0) wired end to end exactly like `grain.amount`: `crates/develop/src/settings.rs` (new `Glow` struct + field on `DevelopSettings`, `skip_serializing_if` at its default so existing settings JSON and `hash64` are byte-identical), `crates/develop/src/controls.rs` (`Section::Glow` + control spec `glow.amount`), `crates/pipeline/src/finish.rs` (`FinishParams::glow` + linear-light placeholder bright-pass lift — pointwise, stands in for the threshold + wide blur + screen blend of EFFECTS_SPEC §1; `None` at amount 0 so the pass is an exact identity and existing renders stay pixel-identical), `crates/ui-egui/src/panels/edit.rs` ("Glow" sub-title + slider in the Effects panel), `crates/engine/src/cmd/develop.rs` (`glow` in the `develop.resetSection` section list). Sidecar round-trip is automatic via `lc:settings`. Tests: `crates/pipeline/src/tests.rs` (`glow_at_zero_is_an_exact_identity_and_at_strength_changes_the_render`), `crates/engine/src/tests_glow.rs` (settings JSON + XMP sidecar round-trip, one undo step with undo/redo, `develop.resetSection {section: glow}`). Also `cargo fmt --all` formatting-only fixes to three M01 files (`cmd/masks.rs`, `cmd/mod.rs`, `tests_export.rs`) that were committed unformatted. Branch `m02-stub-effect`.
