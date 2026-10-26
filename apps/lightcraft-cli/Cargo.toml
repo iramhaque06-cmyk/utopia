@@ -26,8 +26,14 @@ serde_json = { workspace = true }
 dhat = { workspace = true, optional = true }
 
 [features]
-default = ["denoise"]
+# Phase 1 (RULES section 2): no AI in the default build. `ai` turns every model-dependent feature
+# on (AI denoise, SAM 3 masks, face detection/recognition); off by default, no ML runtime is
+# linked and no model weights are downloaded.
+default = []
+ai = ["denoise", "sam", "faces", "lightcraft-ui-egui/ai"]
 denoise = ["lightcraft-engine/denoise"]
+sam = ["lightcraft-engine/sam"]
+faces = ["lightcraft-engine/faces"]
 rawnind-model = ["denoise", "lightcraft-engine/rawnind-model"]
 # Heap profiling: `cargo run --release -p lightcraft-cli --features dhat-heap -- snapshot …` counts
 # every allocation (live/peak bytes in `library.memory` / `ui.inspect`) and writes dhat-heap.json

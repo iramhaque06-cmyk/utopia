@@ -790,3 +790,20 @@ fn sliver_crops_render_quickly_with_wide_stages_on() {
         assert!(r.image.width >= 1 && r.image.height >= 1, "{rect:?}");
     }
 }
+
+/// M02 stub effect (Glow): `glow.amount` 0 is an exact identity (the pass is skipped entirely),
+/// and a real amount changes the render — the control → settings → pipeline path end to end.
+#[test]
+fn glow_at_zero_is_an_exact_identity_and_at_strength_changes_the_render() {
+    // a grey ramp that reaches the stub's bright-pass threshold, so it has something to lift
+    let src = Rgb32f::from_fn(64, 8, |x, _| [0.55 + 0.4 * (x as f32 / 63.0); 3]);
+    let req = RenderRequest::fit(64, 8);
+    let base = render(&src, &SourceInfo::default(), &DevelopSettings::default(), &req).image;
+    let mut s = DevelopSettings::default();
+    controls::set(&mut s, "glow.amount", 0.0);
+    let zero = render(&src, &SourceInfo::default(), &s, &req).image;
+    assert_eq!(base.data, zero.data, "glow.amount 0 must be an exact identity");
+    controls::set(&mut s, "glow.amount", 100.0);
+    let on = render(&src, &SourceInfo::default(), &s, &req).image;
+    assert_ne!(base.data, on.data, "glow.amount must change the render");
+}

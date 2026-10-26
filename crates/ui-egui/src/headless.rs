@@ -502,6 +502,7 @@ impl crate::render::RenderOffload for RenderGate {
 #[cfg(test)]
 mod tests {
     #[test]
+    #[cfg(feature = "denoise")] // M01: the AI Denoise offer is hidden without `denoise`
     fn detail_offers_ai_denoise_for_raw_photos_and_leads_to_its_settings() {
         use crate::state::Dialog;
         use lightcraft_catalog::{MediaKind, Op, Photo, PhotoId, Source};
@@ -560,6 +561,7 @@ mod tests {
     /// Install from file… with a model the engine rejects says why in the AI Denoise section (#1381), instead of
     /// leaving the button looking dead.
     #[test]
+    #[cfg(feature = "denoise")] // M01: model installation is part of the `ai` build
     fn a_rejected_model_file_says_why_in_settings() {
         use crate::state::Dialog;
         let mut h = demo([1400.0, 900.0]);
@@ -1092,6 +1094,7 @@ mod tests {
     /// Adding a face model: the dialog shows the file's terms, the model is installed only once they are
     /// accepted, and a file LightCraft cannot use only says why.
     #[test]
+    #[cfg(feature = "faces")] // M01: face models are part of the `ai` build
     fn adding_a_face_model_shows_its_terms_and_installs_only_once_accepted() {
         use crate::state::Dialog;
         let mut h = demo([1400.0, 900.0]);
@@ -1149,6 +1152,7 @@ mod tests {
     /// Photo > Detect Faces without the detector offers the download: the terms first, nothing fetched before they are
     /// accepted, and the model's row in Settings has its Download button.
     #[test]
+    #[cfg(feature = "faces")] // M01: the face-model offer is hidden without `faces`
     fn detect_faces_without_the_detector_offers_the_download_and_fetches_nothing_before_acceptance() {
         use crate::state::Dialog;
         let mut h = demo([1400.0, 900.0]);
@@ -1184,6 +1188,7 @@ mod tests {
     /// Pressing Download in Settings shows the model's terms first and fetches nothing until they are accepted; a build
     /// that cannot run recognition models offers no download. The licence dialog replaces Settings, which it was opened from.
     #[test]
+    #[cfg(feature = "faces")] // M01: face-model downloads are part of the `ai` build
     fn download_shows_the_terms_first_and_fetches_nothing_until_accepted() {
         use crate::state::Dialog;
         let mut h = demo([1400.0, 900.0]);
@@ -1223,6 +1228,7 @@ mod tests {
     /// Until face recognition is set up, the People view and the loupe's name box say so and offer the next step: with no
     /// model, a button that opens Settings ▸ Faces; with a model installed but recognition off, one that switches it on.
     #[test]
+    #[cfg(feature = "faces")] // M01: the recognition set-up offer is hidden without `faces`
     fn people_and_the_name_box_offer_to_set_face_recognition_up() {
         use crate::state::{Dialog, ViewMode};
         use lightcraft_catalog::Op;
@@ -1726,7 +1732,12 @@ mod tests {
         h.step();
         let r = h.request("ui.inspect", json!({}), t);
         let scan = &r["result"]["faceScan"];
-        assert!(["pause", "light", "normal", "full"].contains(&scan["pace"].as_str().unwrap_or("")), "{scan}");
+        if cfg!(feature = "faces") {
+            assert!(["pause", "light", "normal", "full"].contains(&scan["pace"].as_str().unwrap_or("")), "{scan}");
+        } else {
+            // M01: a build without `faces` runs no scan, so there is no pace to report
+            assert_eq!(scan["pace"].as_str().unwrap_or(""), "", "{scan}");
+        }
         assert!(scan["focused"].is_boolean() && scan["pending"].is_u64() && scan["indexed"].is_u64(), "{scan}");
     }
 

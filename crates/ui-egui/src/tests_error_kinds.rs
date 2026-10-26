@@ -44,7 +44,14 @@ fn run_typed_keeps_the_kind_and_run_the_message() {
     let _ = std::fs::remove_dir_all(&dir);
     h.app.session.face_models_dir = Some(dir.join("models"));
     let typed = h.app.run_typed("faces.detect", json!({})).unwrap_err();
-    assert_eq!(typed.kind, ErrorKind::ModelMissing(AiModel::FaceDetector), "{typed}");
+    if cfg!(feature = "faces") {
+        assert_eq!(typed.kind, ErrorKind::ModelMissing(AiModel::FaceDetector), "{typed}");
+    } else {
+        // M01: a quarantined command keeps its id and answers with the `Disabled` kind and the
+        // clear "built without AI" message instead of asking for a model this build cannot run
+        assert_eq!(typed.kind, ErrorKind::Disabled, "{typed}");
+        assert!(typed.message.contains("built without AI"), "{typed}");
+    }
     h.app.ui.dialog = None;
     let text = h.app.run("faces.detect", json!({})).unwrap_err();
     assert_eq!(text, typed.message);

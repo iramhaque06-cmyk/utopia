@@ -242,7 +242,8 @@ impl Store for MemStore {
     }
 }
 
-#[cfg(test)]
+// The staging-link tests exercise `std::os::unix::fs::symlink`, so the module (and its `use super::*`) exists on unix only.
+#[cfg(all(test, unix))]
 mod tests_staging {
     use super::*;
 

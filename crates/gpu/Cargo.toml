@@ -14,7 +14,8 @@ lightcraft-geom = { workspace = true }
 lightcraft-color = { workspace = true }
 lightcraft-raster = { workspace = true }
 lightcraft-develop = { workspace = true }
-lightcraft-faces = { workspace = true }
+# Face networks on the GPU (`faces` module): behind the `faces` feature (M01 AI quarantine).
+lightcraft-faces = { workspace = true, optional = true }
 lightcraft-pipeline = { workspace = true }
 log = { workspace = true }
 
@@ -28,6 +29,8 @@ bytemuck = { workspace = true }
 [features]
 default = []
 denoise = ["dep:lightcraft-denoise", "lightcraft-denoise/runtime"]
+# GPU accelerator for the face networks (part of the `ai` switch; see engine's `ai` feature).
+faces = ["dep:lightcraft-faces"]
 
 [dev-dependencies]
 # tests record why they skip (`cargo xtask ci` lists the skips)

@@ -11,13 +11,90 @@ mod color;
 pub(crate) mod convert;
 mod cull;
 pub mod curves;
+#[cfg(feature = "denoise")]
 pub(crate) mod denoise;
+/// Without the `ai` feature (M01) the denoise commands keep their ids and labels but can only
+/// answer with [`AI_UNSUPPORTED`]. The session's denoise metadata (settings, cached pictures) is
+/// untouched; only the command surface is unavailable.
+#[cfg(not(feature = "denoise"))]
+pub(crate) mod denoise {
+    // Mirrors the real module's API shape (the session state names these).
+    #![allow(dead_code)]
+
+    use super::*;
+
+    pub(crate) fn specs() -> Vec<CommandSpec> {
+        [
+            ("denoise.models.list", "Denoise Models"),
+            ("denoise.models.inspect", "Inspect Denoise Model"),
+            ("denoise.models.install", "Install Denoise Model"),
+            ("denoise.models.download", "Download Denoise Model"),
+            ("denoise.models.downloads", "Denoise Model Downloads"),
+            ("denoise.models.downloadCancel", "Cancel Denoise Model Download"),
+            ("denoise.models.test", "Test Denoise Model"),
+            ("denoise.models.remove", "Remove Denoise Model"),
+            ("denoise.models.select", "Choose Denoise Model"),
+            ("denoise.settings", "Denoise Settings"),
+            ("denoise.toggle", "AI Denoise"),
+            ("denoise.queue", "Denoise Photos"),
+            ("denoise.cancel", "Cancel Denoise"),
+            ("denoise.status", "Denoise Status"),
+            ("denoise.pump", "Denoise Pump"),
+            ("denoise.clear", "Clear Denoise Cache"),
+        ]
+        .iter()
+        .map(|&(id, label)| ai_stub(id, label))
+        .collect()
+    }
+
+    /// The install job the session state keeps: none can exist without the feature.
+    pub(crate) struct InstallJob;
+
+    /// Nothing can be downloading without the feature.
+    pub(crate) fn finish_downloads(_: &mut Session) {}
+}
 mod develop;
 mod edit;
 mod export;
+#[cfg(feature = "faces")]
 pub(crate) mod face_detect;
+#[cfg(feature = "faces")]
 mod face_models;
 mod face_recognize;
+/// Without the `faces` part of `ai` (M01) the face-model and detection commands keep their ids
+/// and labels but can only answer with [`AI_UNSUPPORTED`]. Naming face regions (data) stays.
+#[cfg(not(feature = "faces"))]
+mod face_detect {
+    use super::*;
+
+    pub(crate) const MARK: &str = super::FACE_DETECT_MARK;
+
+    pub(crate) fn specs() -> Vec<CommandSpec> {
+        [("faces.detect", "Detect Faces"), ("faces.gpu", "Face Detection GPU")].iter().map(|&(id, label)| ai_stub(id, label)).collect()
+    }
+}
+#[cfg(not(feature = "faces"))]
+mod face_models {
+    use super::*;
+
+    pub(crate) fn specs() -> Vec<CommandSpec> {
+        [
+            ("faces.models.list", "Face Models"),
+            ("faces.models.inspect", "Inspect Face Model File"),
+            ("faces.models.install", "Install Face Model"),
+            ("faces.models.download", "Download Face Model"),
+            ("faces.models.downloads", "Face Model Downloads"),
+            ("faces.models.downloadCancel", "Cancel Face Model Download"),
+            ("faces.models.test", "Test Face Model"),
+            ("faces.models.remove", "Remove Face Model"),
+            ("faces.models.select", "Choose Face Recognition Model"),
+            ("faces.enable", "Face Recognition On/Off"),
+        ]
+        .iter()
+        .map(|&(id, label)| ai_stub(id, label))
+        .collect()
+    }
+}
 pub mod filters;
 mod focus;
 pub mod geocode;
@@ -93,6 +170,47 @@ impl CommandSpec {
             enabled: e.is_ok(),
             disabled_reason: e.err(),
         }
+    }
+}
+
+/// Prefix on a face region's description saying the detector added it (data, not AI): naming or
+/// clearing such a region keeps the mark. Shared so the `faces` feature can change what writes it
+/// without changing what reads it.
+pub(crate) const FACE_DETECT_MARK: &str = "Detected by ";
+
+// ---------- AI quarantine (M01, RULES section 2)
+
+/// Why an AI command refuses to run in a build without that part of the `ai` feature.
+#[cfg(any(not(feature = "denoise"), not(feature = "faces")))]
+pub(crate) const AI_UNSUPPORTED: &str = "unsupported in this build: LightCraft was built without AI (the `ai` cargo feature is off; RULES section 2)";
+
+/// `enabled` of an AI command this build does not include: every call answers with
+/// [`EngineError::Disabled`], naming the command and why.
+#[cfg(any(not(feature = "denoise"), not(feature = "faces")))]
+pub(crate) fn ai_unavailable(_: &Session) -> std::result::Result<(), String> {
+    Err(AI_UNSUPPORTED.into())
+}
+
+/// The `run` half (a call that names its photos skips `enabled`): the same clear error.
+#[cfg(any(not(feature = "denoise"), not(feature = "faces")))]
+pub(crate) fn ai_unavailable_run(_: &mut Session, _: &Value) -> Result<Value> {
+    Err(EngineError::Other(AI_UNSUPPORTED.into()))
+}
+
+/// One stub spec: the command keeps its id and label (listings stay truthful) but can only
+/// answer with [`AI_UNSUPPORTED`].
+#[cfg(any(not(feature = "denoise"), not(feature = "faces")))]
+pub(crate) fn ai_stub(id: &'static str, label: &'static str) -> CommandSpec {
+    CommandSpec {
+        id,
+        label,
+        menu: &[],
+        shortcut: None,
+        params: "{} → unsupported in this build (needs the `ai` cargo feature)",
+        enabled: ai_unavailable,
+        run: ai_unavailable_run,
+        journal: false,
+        explicit_targets: false,
     }
 }
 

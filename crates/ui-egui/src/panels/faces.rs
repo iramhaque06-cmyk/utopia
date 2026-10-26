@@ -92,6 +92,10 @@ pub enum Setup {
 /// Where the user stands with face recognition. Cheap: the model list is read at most every 1.5 s, and not at all while
 /// recognition runs.
 pub fn setup(app: &mut LightcraftApp, ctx: &egui::Context) -> Setup {
+    // M01 AI quarantine: without the `faces` part of `ai` there is nothing to set up or offer.
+    if !cfg!(feature = "faces") {
+        return Setup::Unavailable;
+    }
     if app.caches.faces_active {
         return Setup::Running;
     }
@@ -132,6 +136,9 @@ impl Setup {
 
 /// The prompt's button: switch recognition on, or open Settings ▸ Faces, where the model is one click away.
 pub fn take_step(app: &mut LightcraftApp, ctx: &egui::Context, step: Setup) {
+    if !cfg!(feature = "faces") {
+        return;
+    }
     match step {
         Setup::TurnOn => {
             if app.run("faces.enable", json!({"enabled": true})).is_ok() {
@@ -149,6 +156,9 @@ pub fn take_step(app: &mut LightcraftApp, ctx: &egui::Context, step: Setup) {
 
 /// A slim line under a view's heading offering to set recognition up, shown only while it is not set up.
 pub fn setup_banner(app: &mut LightcraftApp, ui: &mut egui::Ui) {
+    if !cfg!(feature = "faces") {
+        return;
+    }
     let step = setup(app, ui.ctx());
     let Some((message, button)) = step.prompt() else { return };
     let t = Tokens::get(ui.ctx());
@@ -239,6 +249,9 @@ fn open_page(app: &mut LightcraftApp, url: &str) {
 
 /// The Settings ▸ Faces tab.
 pub fn settings_tab(app: &mut LightcraftApp, ui: &mut egui::Ui, t: &Tokens) {
+    if !cfg!(feature = "faces") {
+        return;
+    }
     let list = models(app, ui.ctx());
     heading(ui, t, "Face recognition");
     if list["dir"].is_null() {
@@ -442,6 +455,9 @@ fn model_row(app: &mut LightcraftApp, ui: &mut egui::Ui, t: &Tokens, m: &Value, 
 /// The body of the "Add Face Model" dialog: what the file is, its terms, and the accept box.
 /// `info` is the engine's `faces.models.inspect` answer.
 pub fn model_dialog(app: &mut LightcraftApp, ui: &mut egui::Ui, t: &Tokens, info: &Value, accepted: &mut bool) {
+    if !cfg!(feature = "faces") {
+        return;
+    }
     let kind = info["kind"].as_str().unwrap_or("unsupported");
     let file = info["fileName"].as_str().unwrap_or("");
     if kind == "unsupported" {
@@ -534,6 +550,9 @@ pub fn open_download_dialog(app: &mut LightcraftApp, m: &Value) {
 
 /// Photo ▸ Detect Faces without the detector: offer to download it (its terms first), the same as in Settings.
 pub fn offer_detector(app: &mut LightcraftApp) {
+    if !cfg!(feature = "faces") {
+        return;
+    }
     let list = app.session.execute("faces.models.list", &json!({})).unwrap_or(Value::Null);
     if let Some(m) = list["models"].as_array().and_then(|a| a.iter().find(|m| m["role"] == "detector" && m["installed"] != true)) {
         open_download_dialog(app, m);
@@ -542,6 +561,9 @@ pub fn offer_detector(app: &mut LightcraftApp) {
 
 /// Inspect `path` and open the dialog for it (also what dropping a `.onnx` file on the window does).
 pub fn open_dialog(app: &mut LightcraftApp, path: &str) -> Result<Value, String> {
+    if !cfg!(feature = "faces") {
+        return Err("unsupported in this build: face models need the `ai` cargo feature (M01)".into());
+    }
     let info = app.run("faces.models.inspect", json!({"path": path}))?;
     app.ui.dialog = Some(crate::state::Dialog::FaceModel { path: path.to_string(), info, accepted: false });
     Ok(Value::Null)
@@ -550,6 +572,9 @@ pub fn open_dialog(app: &mut LightcraftApp, path: &str) -> Result<Value, String>
 /// The dialog's OK (the engine refuses without the acceptance): for a download, start it and watch it; for a file,
 /// install it. Either way the model ends up installed, in use, with recognition on.
 pub fn install(app: &mut LightcraftApp, path: &str, info: &Value, accepted: bool) -> Result<Value, String> {
+    if !cfg!(feature = "faces") {
+        return Err("unsupported in this build: face models need the `ai` cargo feature (M01)".into());
+    }
     if !accepted {
         return Err("Tick the box to accept the model's terms first".into());
     }
@@ -596,6 +621,9 @@ pub struct Hints {
 /// Suggestions for `photo`'s unnamed faces from what is already indexed (nothing is embedded for this: the background
 /// indexer does that). `None` while recognition is off. Asked again only when the catalog or the index changed.
 pub fn hints_for(app: &mut LightcraftApp, photo: u64) -> Option<std::sync::Arc<Hints>> {
+    if !cfg!(feature = "faces") {
+        return None;
+    }
     if !app.caches.faces_active {
         return None;
     }
@@ -701,6 +729,9 @@ pub fn name_editor(
 /// Called every frame: keeps the background face indexer going while recognition is on, and notes whether it is
 /// running, how many faces it has done and how many photos are left (the loupe's suggestions depend on it).
 pub fn pump(app: &mut LightcraftApp, ctx: &egui::Context) {
+    if !cfg!(feature = "faces") {
+        return;
+    }
     watch_downloads(app, ctx);
     let now = ctx.input(|i| i.time);
     let (working, moving) = ctx.input(|i| {
@@ -800,6 +831,7 @@ fn watch_downloads(app: &mut LightcraftApp, ctx: &egui::Context) {
 }
 
 #[cfg(test)]
+#[cfg_attr(not(feature = "faces"), allow(dead_code))] // M01: model tests run in the `ai` build
 mod tests {
     use super::*;
 
