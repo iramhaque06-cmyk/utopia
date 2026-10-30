@@ -314,7 +314,32 @@ pub fn show(app: &mut LightcraftApp, ui: &mut egui::Ui, id: PhotoId) {
             control(app, ui, d, c, true);
         }
         sub_title(ui, crate::i18n::tr("Glow"));
-        control(app, ui, d, "glow.amount", true);
+        // 6 original styles: bundles of the four Glow sliders, as tiles (like the vignette style
+        // rows above; there is no separate style setting — picking one merges its chunk, so the
+        // sliders then show and tweak its values, and a matching bundle stays highlighted).
+        {
+            const STYLES: [(&str, [f64; 4]); 6] = [
+                ("Soft Haze", [30.0, 50.0, 30.0, 0.0]),
+                ("Orton", [55.0, 85.0, 45.0, 5.0]),
+                ("Dreamy", [70.0, 80.0, 70.0, 10.0]),
+                ("Golden", [60.0, 60.0, 40.0, 55.0]),
+                ("Ethereal", [90.0, 95.0, 55.0, -25.0]),
+                ("Neon", [75.0, 40.0, 20.0, -55.0]),
+            ];
+            let items: Vec<(&str, &str)> = STYLES.iter().map(|(l, _)| (*l, *l)).collect();
+            let active = STYLES.iter().position(|(_, v)| *v == [d.glow.amount, d.glow.size, d.glow.range, d.glow.warmth]);
+            let mut chosen = None;
+            egui::Frame::NONE.inner_margin(egui::Margin { left: 24, right: 22, top: 2, bottom: 4 }).show(ui, |ui| {
+                chosen = crate::widgets::segmented(ui, "glowStyle", &items, active, 3);
+            });
+            if let Some(i) = chosen {
+                let [a, b, c, w] = STYLES[i].1;
+                let _ = app.run("develop.merge", serde_json::json!({"settings": {"glow": {"amount": a, "size": b, "range": c, "warmth": w}}}));
+            }
+        }
+        for c in ["glow.amount", "glow.size", "glow.range", "glow.warmth"] {
+            control(app, ui, d, c, c == "glow.amount" || d.glow.amount != 0.0);
+        }
         sub_title(ui, crate::i18n::tr("Vignette"));
         {
             use lightcraft_develop::VignetteStyle as V;

@@ -23,7 +23,18 @@ Soft, dreamy highlight glow.
 | Range | 0 to 100 | 50 | Moves the highlight threshold; low values glow only the brightest tones, high values glow most of the image |
 | Warmth | -100 to 100 | 0 | Hue shift applied to the glow layer only |
 
-Presets: 6 original styles (names TBD), each a bundle of slider values.
+Presets, 6 original styles (tiles in the Glow panel, each a bundle of the four sliders; picking one merges it, so the sliders then show and tweak its values, and a matching bundle stays highlighted):
+
+| Style | Strength | Size | Range | Warmth |
+|---|---|---|---|---|
+| Soft Haze | 30 | 50 | 30 | 0 |
+| Orton | 55 | 85 | 45 | 5 |
+| Dreamy | 70 | 80 | 70 | 10 |
+| Golden | 60 | 60 | 40 | 55 |
+| Ethereal | 90 | 95 | 55 | -25 |
+| Neon | 75 | 40 | 20 | -55 |
+
+Tuned per RULES §8 with before/after renders of five demo photos (`test-images/_renders/`): the threshold sits in the blurred plane's display-tone map, so an exposure drag moves it with the picture; white skies keep their contrast (screen blend caps at each channel's headroom). Ranges confirmed as proposed.
 
 Acceptance: identity at Strength 0; monotonic increase in glow with Strength; scale-independent; no clipping artifacts on white skies.
 

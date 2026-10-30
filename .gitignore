@@ -14,3 +14,7 @@ plan/
 # model weights are never committed (SAM 3: docs/ai-masks.md)
 *.safetensors
 *.safetensors.part
+# scratch logs of local test runs
+/m0*-*.log
+# test photos and their renders stay local (TEST_PLAN.md, RULES §8)
+/test-images/

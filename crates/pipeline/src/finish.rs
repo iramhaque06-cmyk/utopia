@@ -84,6 +84,18 @@ fn vignette(s: &DevelopSettings) -> Option<Vig> {
     })
 }
 
+/// Glow's render parameters (EFFECTS_SPEC section 1); the GPU kernel copies them verbatim.
+/// Strength 0 (amount 0) is `None` in [`FinishParams::glow`], so the pass is an exact identity.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GlowParams {
+    /// Sky and other blurred-highlight regions lift by this much (0..1).
+    pub amount: f32,
+    /// Blurred display luminance above which pixels glow (0..1).
+    pub threshold: f32,
+    /// Warm–cool tint of the glow layer (−1..1), preserved on its luminance.
+    pub warmth: f32,
+}
+
 /// Hash constants of [`grain_noise`] (shared with the GPU kernel).
 pub const GRAIN_HASH: [u32; 4] = [0x8da6_b343, 0xd816_3841, 0xcb1a_b31f, 0x5bd1_e995];
 
@@ -183,8 +195,9 @@ pub struct FinishParams {
     pub ev: f32,
     /// Grain: amount, cell size (px), roughness, seed.
     pub grain: Option<(f32, f32, f32, u32)>,
-    /// Glow (M02 stub): strength 0..1; `None` at amount 0, so the pass is an exact identity.
-    pub glow: Option<f32>,
+    /// Glow (EFFECTS_SPEC section 1): strength (0..1), threshold (display luminance) and warmth
+    /// (−1..1); `None` at amount 0, so the pass is an exact identity.
+    pub glow: Option<GlowParams>,
     /// Output px → normalized oriented coordinates.
     pub out_to_norm: lightcraft_geom::Affine,
     pub ow: f64,
@@ -224,8 +237,12 @@ impl FinishParams {
             let cell = (0.0006 + (s.grain.size / 100.0) as f32 * 0.0024) * px_per_long as f32;
             ((s.grain.amount / 100.0) as f32 * 0.13, cell.max(0.6), (s.grain.roughness / 100.0) as f32, s.grain.seed)
         });
-        // Glow (M02 stub): like grain, switched off with the Effects section; 0 → exact identity.
-        let glow = (s.glow.amount > 0.0 && effects).then(|| (s.glow.amount / 100.0) as f32);
+        // Glow (EFFECTS_SPEC section 1): like grain, switched off with the Effects section; amount 0 → exact identity.
+        let glow = (s.glow.amount > 0.0 && effects).then(|| GlowParams {
+            amount: (s.glow.amount / 100.0) as f32 * 0.9,
+            threshold: (0.05 + 0.85 * (1.0 - s.glow.range / 100.0)) as f32,
+            warmth: (s.glow.warmth / 100.0) as f32,
+        });
         let calibration = s.section_enabled("calibration");
         let peak = s.hdr.peak();
         FinishParams {
@@ -587,6 +604,34 @@ pub(crate) fn finish_with<T: Copy + Default + Send>(
                 }
             }
 
+            // --- glow (EFFECTS_SPEC section 1): blurred, highlight-weighted layer, screen-blended.
+            // The blurred source (before exposure, working space) sets where glow appears, how
+            // bright it is and its colour; the tone map of that (same LUT as the pixels') puts the
+            // threshold on display luminance, so an EV drag moves the threshold with the picture.
+            if let Some(g) = glow.as_ref()
+                && let Some(blur) = &p.glow_blur
+            {
+                let bl = blur.data[i];
+                let yb = bl.map(|v| (v * gain).max(0.0));
+                let s = tone.apply(luminance_2020(yb)) / g.threshold.max(1e-6) - 1.0;
+                let wgt = if s > 0.0 { s / (1.0 + s) } else { 0.0 };
+                if wgt > 0.0 {
+                    // The glow layer takes the blur's diluted chromaticity, tilted by Warmth on the
+                    // plane's luminance; each channel screen-blends: `out = d + k − k·d`, capped to
+                    // the channel's headroom so values over SDR white (HDR peak) are only ever added to.
+                    const WARM_CH_W: f32 = 0.35;
+                    let mut ch = bl.map(|v| v / luminance_2020(bl).max(1e-6));
+                    if g.warmth != 0.0 {
+                        ch[0] *= 1.0 + WARM_CH_W * g.warmth;
+                        ch[2] *= 1.0 - WARM_CH_W * g.warmth;
+                        let sum = (ch[0] + ch[1] + ch[2]).max(1e-6);
+                        ch = ch.map(|v| v / sum);
+                    }
+                    let k = g.amount * wgt;
+                    d = std::array::from_fn(|kk| d[kk] + k * ch[kk] * (1.0 - d[kk].clamp(0.0, 1.0)));
+                }
+            }
+
             // --- gamut map to the output space (desaturate towards luminance until in range);
             // soft proofing maps into the proof space first and shows that in the output space
             let mut warn = None;
@@ -613,17 +658,6 @@ pub(crate) fn finish_with<T: Copy + Default + Send>(
                 warn = Some(crate::output::PROOF_DISPLAY_WARNING);
             }
             r = mapped;
-
-            // --- glow (M02 stub, linear light)
-            if let Some(amt) = *glow {
-                // Placeholder for the threshold, wide blur and screen blend of EFFECTS_SPEC section 1
-                // (M03): a pointwise bright-pass lift. Strength 0 never enters this branch, so the
-                // default render is an exact identity.
-                let lum = 0.2126 * r[0] + 0.7152 * r[1] + 0.0722 * r[2];
-                let b = (lum - 0.75).max(0.0);
-                let k = amt * 0.5 * b / (1.0 + b);
-                r = r.map(|v| v + k);
-            }
 
             // --- encode, curves, grain
             let mut e = if hdr {

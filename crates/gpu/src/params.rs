@@ -32,6 +32,10 @@ const FIELDS: &[(&str, usize)] = &[
     ("HAS_TEX", 1),
     ("HAS_DARK", 1),
     ("HAS_CHROMA", 1),
+    ("HAS_GLOW", 1),
+    ("GLOW_AMT", 1),
+    ("GLOW_THRESH", 1),
+    ("GLOW_WARM", 1),
     ("OPS_IDENTITY", 1),
     ("VIBRANCE", 1),
     ("SATURATION", 1),
@@ -136,6 +140,9 @@ pub struct Present {
     pub dark: bool,
     /// The blurred chromaticity follows the mask planes in the `masks` buffer.
     pub chroma: bool,
+    /// Glow's wide blur (its own binding; set even when `fp.glow` is `None` while the plane
+    /// exists, so the kernel entry sees the HAS_GLOW flag instead).
+    pub glow: bool,
 }
 
 /// The `finish` kernel's parameter block and auxiliary table (tone LUT | chroma curve | sRGB LUT | curve LUTs |
@@ -181,6 +188,12 @@ pub fn finish_block(fp: &FinishParams, masks: &[[f32; MASK_TERMS]], present: &Pr
     p.b("HAS_TEX", present.texture);
     p.b("HAS_DARK", present.dark);
     p.b("HAS_CHROMA", present.chroma);
+    p.b("HAS_GLOW", present.glow);
+    if let Some(g) = &fp.glow {
+        p.f("GLOW_AMT", g.amount);
+        p.f("GLOW_THRESH", g.threshold);
+        p.f("GLOW_WARM", g.warmth);
+    }
 
     let ops = &fp.ops;
     p.b("OPS_IDENTITY", ops.is_identity());

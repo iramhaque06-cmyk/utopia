@@ -46,6 +46,7 @@ struct Planes {
     texture: Option<(u32, Arc<Buf>)>,
     dark: Option<(u32, Arc<Buf>, f32)>,
     chroma: Option<(u32, Arc<Buf>)>,
+    glow: Option<(u32, Arc<Buf>)>,
 }
 
 impl GpuStages {
@@ -677,6 +678,7 @@ pub fn render(
         texture: prep.texture.is_some(),
         dark: prep.dark.is_some(),
         chroma: masks.is_some() && prep.chroma.is_some(),
+        glow: fp.glow.is_some(),
     };
     let (p, aux) = finish_block(&fp, &terms, &present);
     let aux = gpu.upload(&aux);
@@ -702,6 +704,7 @@ pub fn render(
                 prep.clarity.as_deref(),
                 prep.texture.as_deref(),
                 prep.dark.as_deref(),
+                prep.glow.as_deref(),
                 masks.as_ref(),
                 Some(&aux),
                 Some(&out),
@@ -852,6 +855,8 @@ struct Prep {
     dark: Option<Arc<Buf>>,
     /// Blurred chromaticity (local Moiré / Noise).
     chroma: Option<Arc<Buf>>,
+    /// The wide blur of the whole image that Glow reads (before exposure).
+    glow: Option<Arc<Buf>>,
     air: f32,
 }
 
@@ -906,7 +911,8 @@ fn prepare(cx: &mut Cx<'_>, lin: &Buf, plan: &Plan<'_>, req: &RenderRequest, pla
             gaussian(cx, &ch, w, h, 3, sg)
         })
     });
-    Prep { log_l, base, clarity, texture, dark, chroma, air }
+    let glow = sig.glow.map(|sg| plane_at(&mut planes.glow, sg.to_bits(), || gaussian(cx, lin, w, h, 3, sg)));
+    Prep { log_l, base, clarity, texture, dark, chroma, glow, air }
 }
 
 /// Most brush dabs the mask kernel evaluates per pixel (more: the CPU rasterizes the brush).

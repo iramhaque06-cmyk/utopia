@@ -56,3 +56,20 @@ fn glow_resets_with_its_section() {
     s.execute("develop.resetSection", &json!({"section": "glow"})).unwrap();
     assert_eq!(s.develop_of(id).unwrap().glow.amount, 0.0);
 }
+
+/// The other three Glow sliders round-trip through the settings JSON as well (a preset or a
+/// sidecar written before this build's defaults reads back at the same values).
+#[test]
+fn glow_size_range_warmth_round_trip_through_the_settings_json() {
+    let mut s = Session::with_demo();
+    let id = s.visible_cloned()[0];
+    select(&mut s, &[id]);
+    s.execute("develop.set", &json!({"control": "glow.amount", "value": 60.0})).unwrap();
+    s.execute("develop.set", &json!({"control": "glow.size", "value": 70.0})).unwrap();
+    s.execute("develop.set", &json!({"control": "glow.range", "value": 30.0})).unwrap();
+    s.execute("develop.set", &json!({"control": "glow.warmth", "value": -45.0})).unwrap();
+    let d = (*s.develop_of(id).unwrap()).clone();
+    assert_eq!((d.glow.amount, d.glow.size, d.glow.range, d.glow.warmth), (60.0, 70.0, 30.0, -45.0));
+    let back = lightcraft_develop::DevelopSettings::from_json(&d.to_json()).unwrap();
+    assert_eq!((back.glow.amount, back.glow.size, back.glow.range, back.glow.warmth), (60.0, 70.0, 30.0, -45.0));
+}

@@ -211,6 +211,8 @@ pub(crate) struct Prepared {
     pub dark: Option<Arc<Plane>>,
     /// Blurred chromaticity (`rgb / Y`) for local Moiré / Noise.
     pub chroma_blur: Option<Arc<Rgb32f>>,
+    /// The wide blur of the whole image that Glow reads (before exposure).
+    pub glow_blur: Option<Arc<Rgb32f>>,
     /// Airlight of `dark` (before exposure).
     pub air: f32,
     pub masks: Vec<masks::Evaluated>,

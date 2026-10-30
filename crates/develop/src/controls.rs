@@ -254,6 +254,9 @@ controls! {
     "grain.size" => grain.size, "Size", Grain, 0, 100, 25, 1, 0, Plain;
     "grain.roughness" => grain.roughness, "Roughness", Grain, 0, 100, 50, 1, 0, Plain;
     "glow.amount" => glow.amount, "Glow", Glow, 0, 100, 0, 1, 0, Plain;
+    "glow.size" => glow.size, "Size", Glow, 0, 100, 40, 1, 0, Plain;
+    "glow.range" => glow.range, "Range", Glow, 0, 100, 50, 1, 0, Plain;
+    "glow.warmth" => glow.warmth, "Warmth", Glow, -100, 100, 0, 1, 0, Centered;
     "enhance.denoise" => enhance.denoise, "Amount", Detail, 0, 100, 0, 1, 0, Plain;
     "detail.sharpenAmount" => detail.sharpen_amount, "Sharpening", Detail, 0, 150, 0, 1, 0, Plain;
     "detail.sharpenRadius" => detail.sharpen_radius, "Radius", Detail, 0.5, 3, 1, 0.1, 1, Plain;

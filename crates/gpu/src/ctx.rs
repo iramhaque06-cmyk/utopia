@@ -23,6 +23,7 @@ const MODULES: &[Module] = &[
             ("clar", false, "f32"),
             ("tex", false, "f32"),
             ("dark", false, "f32"),
+            ("glow", false, "f32"),
             ("masks", false, "f32"),
             ("aux", false, "f32"),
             ("out", true, "u32"),
