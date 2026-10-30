@@ -1,5 +1,6 @@
 // The per-pixel stage: a straight port of `lightcraft_pipeline::finish` (keep in step with it).
-// Bindings: img (rgb, pre-exposure), log_l, base, clar, tex, dark, masks (NMASK planes, then the
+// Bindings: img (rgb, pre-exposure), log_l, base, clar, tex, dark, glow (the wide image blur of
+// Glow), masks (NMASK planes, then the
 // blurred chromaticity when HAS_CHROMA), aux
 // (tone LUT | chroma curve | sRGB LUT | curve LUTs | mask terms), out (packed RGBA8).
 
@@ -464,6 +465,31 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
             } else {
                 d = d + (1.0 - d) * amount * t * 0.85;
             }
+        }
+    }
+
+    // --- glow (EFFECTS_SPEC section 1): blurred, highlight-weighted layer, screen-blended.
+    // The blurred source (before exposure, working space) sets where glow appears, how bright it
+    // is and its colour; the tone map of that (same LUT as the pixels') puts the threshold on
+    // display luminance, so an EV drag moves the threshold with the picture.
+    if (pu(F_HAS_GLOW) != 0u && pf(F_GLOW_AMT) > 0.0) {
+        let bl = vec3<f32>(glow[3u * i], glow[3u * i + 1u], glow[3u * i + 2u]);
+        let yb = lum2020(max(bl * gain, vec3<f32>(0.0)));
+        let s = tone_apply(yb) / max(pf(F_GLOW_THRESH), 1e-6) - 1.0;
+        let wgt = select(0.0, s / (1.0 + s), s > 0.0);
+        if (wgt > 0.0) {
+            // The glow layer takes the blur's diluted chromaticity, tilted by Warmth on its
+            // luminance; each channel screen-blends: `out = d + k − k·d`, capped to the channel's
+            // headroom so values over SDR white (HDR peak) are only ever added to.
+            var ch = bl / max(lum2020(bl), 1e-6);
+            let w = pf(F_GLOW_WARM);
+            if (w != 0.0) {
+                ch.x *= 1.0 + 0.35 * w;
+                ch.z *= 1.0 - 0.35 * w;
+                ch = ch / max(ch.x + ch.y + ch.z, 1e-6);
+            }
+            let kg = pf(F_GLOW_AMT) * wgt;
+            d = d + kg * ch * (1.0 - clamp(d, vec3<f32>(0.0), vec3<f32>(1.0)));
         }
     }
 

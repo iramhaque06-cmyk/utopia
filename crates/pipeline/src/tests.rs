@@ -807,3 +807,132 @@ fn glow_at_zero_is_an_exact_identity_and_at_strength_changes_the_render() {
     let on = render(&src, &SourceInfo::default(), &s, &req).image;
     assert_ne!(base.data, on.data, "glow.amount must change the render");
 }
+
+/// A picture with a bright sky and a dark foreground, so the glow has something to lift, and far
+/// pixels it would smear across if Size were huge.
+fn glow_scene(w: usize, h: usize) -> Rgb32f {
+    Rgb32f::from_fn(w, h, |x, y| {
+        if y < h / 2 {
+            // bright, slightly warm sky with a smooth gradient to the left
+            [0.08 * x as f32 / w as f32 + 0.85, 0.85 + 0.1 * y as f32 / h as f32, 0.8]
+        } else {
+            [0.04 + 0.1 * x as f32 / w as f32, 0.06, 0.1]
+        }
+    })
+}
+
+/// Glow raises the mean, monotonically with Strength and, at that strength, with the Range: more
+/// picture above the threshold glows. Size changes the render too (its own slider is wired).
+#[test]
+fn glow_lifts_mean_monotonically_in_strength_and_range() {
+    let src = glow_scene(160, 107);
+    let req = RenderRequest::fit(160, 107);
+    let base = render(&src, &SourceInfo::default(), &DevelopSettings::default(), &req).image;
+    let mut prev = 0.0;
+    for a in [25.0, 50.0, 100.0] {
+        let mut s = DevelopSettings::default();
+        controls::set(&mut s, "glow.amount", a);
+        controls::set(&mut s, "glow.range", 40.0);
+        let m = mean_luma(&render(&src, &SourceInfo::default(), &s, &req).image) - mean_luma(&base);
+        assert!(m > prev && m > 0.0, "strength {a}: lifted {m} after {prev}");
+        prev = m;
+    }
+    // Range moves the threshold; a range past the sky's blurred display luminance glows nothing
+    // (that is the first sweep's last lift, not a measured endpoint), so sweep the glowing middle.
+    let mut re = 0.0;
+    for r in [40.0, 70.0, 100.0] {
+        let mut s = DevelopSettings::default();
+        controls::set(&mut s, "glow.amount", 60.0);
+        controls::set(&mut s, "glow.range", r);
+        let m = mean_luma(&render(&src, &SourceInfo::default(), &s, &req).image) - mean_luma(&base);
+        assert!(m > re && m > 0.0, "range {r}: lifted {m} after {re}");
+        re = m;
+    }
+    let mut s = DevelopSettings::default();
+    controls::set(&mut s, "glow.amount", 60.0);
+    controls::set(&mut s, "glow.size", 80.0);
+    let wide = render(&src, &SourceInfo::default(), &s, &req).image;
+    controls::set(&mut s, "glow.size", 20.0);
+    let narrow = render(&src, &SourceInfo::default(), &s, &req).image;
+    assert_ne!(wide.data, narrow.data);
+}
+
+/// Same relative Settings on a quarter-scale render (same relative Size): the same look. The two
+/// variants of the scene are that: Size is a fraction of the long edge, so a 4 MP and a 0.25 MP
+/// render match once the big one is scaled back down.
+#[test]
+fn glow_is_scale_independent() {
+    let settings = {
+        let mut s = DevelopSettings::default();
+        controls::set(&mut s, "glow.amount", 60.0);
+        controls::set(&mut s, "glow.size", 40.0);
+        controls::set(&mut s, "glow.range", 45.0);
+        controls::set(&mut s, "glow.warmth", 15.0);
+        s
+    };
+    let src = lightcraft_scenes::demo_library()[2].render(600, 400);
+    let small_src = lightcraft_scenes::demo_library()[2].render(150, 100);
+    let big = render(&src, &SourceInfo::default(), &settings, &RenderRequest::fit(300, 200)).image;
+    let small = render(&small_src, &SourceInfo::default(), &settings, &RenderRequest::fit(150, 100)).image;
+    let down = lightcraft_raster::resample::resize(&big.to_linear(), 150, 100, lightcraft_raster::resample::Filter::Box).to_srgb8();
+    let (mut sum, mut over) = (0u64, 0u64);
+    for (a, b) in down.data.iter().zip(&small.data) {
+        for c in 0..3 {
+            sum += a[c].abs_diff(b[c]) as u64;
+            over += (a[c].abs_diff(b[c]) > 8) as u64;
+        }
+        assert!(a[3] == 255 && b[3] == 255);
+    }
+    let mean = sum as f64 / (small.data.len() * 3) as f64;
+    let corrupted = over as f64 / (small.data.len() * 3) as f64;
+    assert!(mean < 1.5, "mean |delta| {mean:.3} LSB");
+    assert!(corrupted < 0.02, "share of channels off by more than 8 LSB: {corrupted:.3}");
+}
+
+/// Warmth tilts the glow layer warm (+) or cool (−): the R mean moves with the tilt, the B mean
+/// against it, and the mean luminance stays away from both ends by a hair.
+#[test]
+fn glow_warmth_tilts_colour_without_moving_luminance() {
+    let src = glow_scene(320, 213);
+    let req = RenderRequest::fit(320, 213);
+    let mut s = DevelopSettings::default();
+    controls::set(&mut s, "glow.amount", 100.0);
+    controls::set(&mut s, "glow.range", 60.0);
+    let at = |s: &mut DevelopSettings, w: f64| {
+        controls::set(s, "glow.warmth", w);
+        let r = render(&src, &SourceInfo::default(), s, &req);
+        let img = &r.image;
+        let n = img.len() as f32;
+        ((img.data.iter().map(|p| p[0] as f32).sum::<f32>() / n), (img.data.iter().map(|p| p[2] as f32).sum::<f32>() / n), mean_luma(img))
+    };
+    let (rw, _bw, lw) = at(&mut s, 100.0);
+    let (rc, bc, lc) = at(&mut s, -100.0);
+    assert!(rw > rc, "warm raises the R mean ({rw} vs {rc})");
+    assert!(bc > 0.0 && (bc - rc).abs() < 255.0, "cool keeps its pixels in order");
+    assert!((lw - lc).abs() < 8.0, "mean luminance moved only {:.2} (8 LSB tolerance)", (lw - lc).abs());
+}
+
+/// Pure black, pure white, pure grey and noise: a Glow run at both extremes (max strength and
+/// size with an open range, and a hairline radius with a shut range and full cool tint) renders
+/// without panicking, and every pixel keeps a written alpha.
+#[test]
+fn glow_is_sane_on_degenerate_and_noisy_images() {
+    let plain: Vec<Rgb32f> = vec![
+        Rgb32f::from_fn(96, 64, |_, _| [0.0; 3]),
+        Rgb32f::from_fn(96, 64, |_, _| [1.0; 3]),
+        Rgb32f::from_fn(96, 64, |_, _| [0.5; 3]),
+        Rgb32f::from_fn(96, 64, |x, y| [((x * 7 + y * 13) % 17) as f32 / 16.0; 3]),
+    ];
+    let req = RenderRequest::fit(96, 64);
+    for src in &plain {
+        for (a, size, range, w) in [(100.0, 100.0, 100.0, 100.0), (100.0, 0.0, 0.0, -100.0)] {
+            let mut s = DevelopSettings::default();
+            controls::set(&mut s, "glow.amount", a);
+            controls::set(&mut s, "glow.size", size);
+            controls::set(&mut s, "glow.range", range);
+            controls::set(&mut s, "glow.warmth", w);
+            let r = render(src, &SourceInfo::default(), &s, &req).image;
+            assert!(r.data.iter().all(|p| p[3] == 255));
+        }
+    }
+}

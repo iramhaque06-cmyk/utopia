@@ -877,3 +877,29 @@ fn windows_of_a_big_photo_share_one_uploaded_source() {
     lightcraft_gpu::render(&src, &info, &s, &at(1000), Some(&after)).expect("gpu render");
     assert_eq!(lightcraft_gpu::source_uploads() - start, 2);
 }
+
+/// Glow (EFFECTS_SPEC section 1): the wide blur plane, the highlight-weighted screen blend and
+/// Warmth on that layer, warm and cool, near the threshold's midpoint and at full values.
+#[test]
+fn glow_matches() {
+    if !gpu() {
+        return;
+    }
+    let src = scene(2, 480, 320);
+    let info = SourceInfo::default();
+    let mut s = DevelopSettings::default();
+    s.glow.amount = 50.0;
+    s.glow.size = 30.0;
+    s.glow.range = 40.0;
+    s.glow.warmth = 0.0;
+    check("glow neutral", &src, &info, &s, &RenderRequest::fit(480, 320));
+    s.glow.warmth = 40.0;
+    check("glow warm", &src, &info, &s, &RenderRequest::fit(480, 320));
+    s.glow.warmth = -40.0;
+    check("glow cool", &src, &info, &s, &RenderRequest::fit(480, 320));
+    s.glow.amount = 100.0;
+    s.glow.size = 80.0;
+    s.glow.range = 90.0;
+    s.glow.warmth = -25.0;
+    check("glow max", &src, &info, &s, &RenderRequest::fit(480, 320));
+}

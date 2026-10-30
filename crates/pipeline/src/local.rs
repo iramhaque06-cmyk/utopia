@@ -423,6 +423,8 @@ pub(crate) struct Planes {
     pub dark: Option<(u32, Arc<Plane>, f32)>,
     /// Blurred chromaticity (local Moiré / Noise).
     pub chroma: Option<(u32, Arc<Rgb32f>)>,
+    /// The wide blur of the whole image that Glow's palette and threshold read.
+    pub glow: Option<(u32, Arc<Rgb32f>)>,
 }
 
 impl Planes {
@@ -486,6 +488,8 @@ pub struct PlaneSigmas {
     pub dark: Option<f32>,
     /// Chromaticity blur for local Moiré / colour noise (Gaussian).
     pub chroma: Option<f32>,
+    /// The wide image blur of Glow (Gaussian).
+    pub glow: Option<f32>,
 }
 
 pub fn plane_sigmas(s: &DevelopSettings, px_per_long: f64, q: Quality) -> PlaneSigmas {
@@ -511,8 +515,10 @@ pub fn plane_sigmas(s: &DevelopSettings, px_per_long: f64, q: Quality) -> PlaneS
     .then(|| (0.0018 * ppl).max(0.6));
     let dark = (s.effects.dehaze != 0.0 || local_any(|a| a.dehaze)).then(|| (0.02 * ppl).max(1.0));
     let chroma = (local_any(|a| a.moire) || s.masks.iter().any(|m| m.adjust.noise > 0.0)).then(|| (CHROMA_SIGMA * ppl).max(1.0));
+    // Glow: Size 0..100 → 0.5%..6% of the long edge (EFFECTS_SPEC section 1)
+    let glow = (s.section_enabled("effects") && s.glow.amount > 0.0).then(|| ((0.005 + 0.055 * (s.glow.size / 100.0) as f32) * ppl).max(0.6));
     let base_detail = if base.is_some() { tone_base_detail(s, px_per_long) } else { 0 };
-    PlaneSigmas { base, base_detail, clarity, texture, dark, chroma }
+    PlaneSigmas { base, base_detail, clarity, texture, dark, chroma, glow }
 }
 
 /// The spatial planes the per-pixel stage needs for `img` (white-balanced, before exposure),
@@ -529,10 +535,18 @@ pub(crate) fn prepare(
     mattes: Option<&masks::Mattes>,
 ) -> Prepared {
     let log_l = planes.log_l.get_or_insert_with(|| Arc::new(timed("log_l", || img.map(log_lum)))).clone();
-    let PlaneSigmas { base: base_sigma, base_detail, clarity: clarity_sigma, texture: texture_sigma, dark: dark_sigma, chroma: chroma_sigma } =
-        plane_sigmas(s, px_per_long, q);
+    let PlaneSigmas {
+        base: base_sigma,
+        base_detail,
+        clarity: clarity_sigma,
+        texture: texture_sigma,
+        dark: dark_sigma,
+        chroma: chroma_sigma,
+        glow: glow_sigma,
+    } = plane_sigmas(s, px_per_long, q);
 
-    let Planes { base: sb, clarity: sc, texture: st, dark: sd, chroma: sch, .. } = planes;
+    let Planes { base: sb, clarity: sc, texture: st, dark: sd, chroma: sch, glow: sgl, .. } = planes;
+    let glow_blur = glow_sigma.map(|sg| plane_at(sgl, sg.to_bits(), || timed("glow", || gaussian(img.as_ref(), sg))));
     let chroma_blur = chroma_sigma.map(|sg| match sch {
         Some((k, c)) if *k == sg.to_bits() => c.clone(),
         _ => {
@@ -573,7 +587,7 @@ pub(crate) fn prepare(
     };
     let ev = s.light.exposure as f32;
     let masks = timed("masks", || masks::evaluate(&s.masks, frame, img.width, img.height, &img, &log_l, ev, mattes));
-    Prepared { img, log_l, base, clarity_blur, texture_blur, dark, chroma_blur, air, masks, px_per_long }
+    Prepared { img, log_l, base, clarity_blur, texture_blur, dark, chroma_blur, glow_blur, air, masks, px_per_long }
 }
 
 /// The airlight of the whole output frame, estimated on a small render of it (`proxy_w` px wide):

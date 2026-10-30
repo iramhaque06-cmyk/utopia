@@ -614,13 +614,27 @@ impl Default for Grain {
     }
 }
 
-/// Glow (M02 stub; the threshold + wide blur + screen blend arrives in M03, EFFECTS_SPEC section 1).
-/// Omitted from the settings JSON while at its default, so settings saved before M02 keep their exact
+/// Glow (EFFECTS_SPEC section 1): soft, dreamy highlight glow — a blurred, highlight-weighted layer
+/// screened back over the render. Amount 0 is off; the other sliders only matter then. Omitted from
+/// the settings JSON while at its default, so settings saved before it existed keep their exact
 /// bytes and `hash64`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Glow {
+    /// Strength: blend amount of the glow layer (0..100).
     pub amount: f64,
+    /// Blur radius as a fraction of the long edge (0..100 → about 0.5%..6%).
+    pub size: f64,
+    /// Highlight threshold; low = only the brightest tones glow, high = most of the image (0..100).
+    pub range: f64,
+    /// Warm–cool tint of the glow layer (−100 warm .. 100 cool).
+    pub warmth: f64,
+}
+
+impl Default for Glow {
+    fn default() -> Self {
+        Self { amount: 0.0, size: 40.0, range: 50.0, warmth: 0.0 }
+    }
 }
 
 impl Glow {
